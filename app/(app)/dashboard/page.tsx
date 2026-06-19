@@ -15,7 +15,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/empty-state";
-import { TAX_TYPE_LABELS, type TaxType } from "@/lib/constants";
+import { TAX_TYPE_LABELS, FEATURE_LABELS, type TaxType } from "@/lib/constants";
+import { getUsageStatus, getMonthlyUsageByFeature } from "@/lib/usage";
 
 export const metadata = {
   title: "대시보드",
@@ -118,8 +119,24 @@ async function getRecentItems(): Promise<RecentItem[]> {
     .slice(0, 5);
 }
 
+const FEATURE_ORDER = [
+  "request_generation",
+  "consultation_summary",
+  "report_explanation",
+] as const;
+
 export default async function DashboardPage() {
-  const recentItems = await getRecentItems();
+  const supabase = await createClient();
+  const [recentItems, usage, byFeature] = await Promise.all([
+    getRecentItems(),
+    getUsageStatus(supabase),
+    getMonthlyUsageByFeature(supabase),
+  ]);
+
+  const percent =
+    usage.limit > 0
+      ? Math.min(100, Math.round((usage.used / usage.limit) * 100))
+      : 0;
 
   return (
     <div className="space-y-10">
@@ -127,6 +144,54 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold tracking-tight">대시보드</h1>
         <p className="text-sm text-muted-foreground">사용할 기능을 선택하세요.</p>
       </div>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">이번 달 사용량</h2>
+          <Link
+            href="/billing"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            {usage.plan.name} 플랜
+          </Link>
+        </div>
+        <Card className="p-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">전체 생성</span>
+            <span>
+              <span
+                className={
+                  usage.allowed
+                    ? "font-semibold text-foreground"
+                    : "font-semibold text-destructive"
+                }
+              >
+                {usage.used.toLocaleString()}
+              </span>
+              {" / "}
+              {usage.limit.toLocaleString()}건
+            </span>
+          </div>
+          <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full rounded-full ${usage.allowed ? "bg-foreground" : "bg-destructive"}`}
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+          <div className="mt-4 grid gap-2 border-t border-border pt-4 sm:grid-cols-3">
+            {FEATURE_ORDER.map((feature) => (
+              <div key={feature} className="flex items-center justify-between text-sm sm:flex-col sm:items-start sm:gap-1">
+                <span className="text-muted-foreground">
+                  {FEATURE_LABELS[feature]}
+                </span>
+                <span className="font-medium">
+                  {byFeature[feature].toLocaleString()}건
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </section>
 
       <section className="grid gap-4 sm:grid-cols-2">
         {FEATURES.map((feature) => {

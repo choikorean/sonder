@@ -31,16 +31,6 @@ export type Feature = keyof typeof FEATURE_LABELS;
 export const REVIEW_DISCLAIMER =
   "AI가 생성한 초안입니다. 고객 발송 전 세무사가 반드시 검토해야 합니다.";
 
-export const STARTER_PLAN = {
-  name: "Starter",
-  priceKrw: 99000,
-  limits: {
-    request_generation: 500,
-    consultation_summary: 100,
-    report_explanation: 500,
-  },
-} as const;
-
 export const AUDIO_MAX_BYTES = 26214400; // 25MB
 
 export const AUDIO_ALLOWED_MIME_TYPES = [

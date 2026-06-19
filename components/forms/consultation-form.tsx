@@ -22,6 +22,7 @@ type SummaryData = {
   clientSummary: string;
   requiredDocuments: string;
   nextActions: string;
+  nextGuidance: string;
 };
 
 type ApiResult =
@@ -42,7 +43,7 @@ function OutputSection({ title, value }: { title: string; value: string }) {
       </CardHeader>
       <CardContent>
         {content ? (
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
             {content}
           </p>
         ) : (
@@ -161,17 +162,18 @@ export function ConsultationForm() {
                 </CardAction>
               </CardHeader>
               <CardContent>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-muted-foreground">
                   {data.transcript}
                 </p>
               </CardContent>
             </Card>
           )}
 
-          <OutputSection title="내부 요약" value={data.summary} />
-          <OutputSection title="고객 전달용 요약" value={data.clientSummary} />
-          <OutputSection title="필요 자료" value={data.requiredDocuments} />
-          <OutputSection title="후속 조치" value={data.nextActions} />
+          <OutputSection title="상담 요약" value={data.summary} />
+          <OutputSection title="고객 전달용 정리문" value={data.clientSummary} />
+          <OutputSection title="추가로 받아야 할 자료" value={data.requiredDocuments} />
+          <OutputSection title="내부 후속 조치" value={data.nextActions} />
+          <OutputSection title="다음 안내 사항" value={data.nextGuidance} />
 
           <ReviewDisclaimer />
         </div>

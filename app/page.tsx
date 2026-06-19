@@ -3,57 +3,245 @@ import {
   FileText,
   MessagesSquare,
   Receipt,
-  Clock,
-  RefreshCw,
-  ClipboardList,
   Check,
+  X,
+  PhoneCall,
+  HelpCircle,
+  TrendingUp,
+  NotebookPen,
+  ArrowRight,
+  Quote,
 } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { REVIEW_DISCLAIMER, STARTER_PLAN } from "@/lib/constants";
+import { REVIEW_DISCLAIMER } from "@/lib/constants";
+import { PLANS, PURCHASABLE_PLAN_IDS, formatKrw } from "@/lib/plans";
+
+const PAINS = [
+  {
+    icon: PhoneCall,
+    title: "“자료 아직 안 보내주셨어요.”",
+    body: "부가세·종소세·법인세 시즌마다 거래처에 같은 말을 반복합니다. 결국 다시 연락하고, 다시 설명하고, 다시 확인합니다.",
+  },
+  {
+    icon: HelpCircle,
+    title: "“홈택스에 다 있는 거 아닌가요?”",
+    body: "거래처는 왜 이 자료가 필요한지 모릅니다. 자료 요청보다 더 피곤한 건 왜 줘야 하는지 매번 설명하는 일입니다.",
+  },
+  {
+    icon: TrendingUp,
+    title: "“세금이 왜 이렇게 많이 나왔나요?”",
+    body: "신고가 끝나도 일이 끝나지 않습니다. 고객이 이해할 수 있게 결과를 풀어 쓰는 데 또 시간이 듭니다.",
+  },
+  {
+    icon: NotebookPen,
+    title: "상담은 끝났는데, 정리가 남습니다.",
+    body: "상담 요약, 고객 요약문, 직원 업무 지시, 추가 자료 정리, 다음 일정 안내. 바쁠 때 가장 쉽게 누락됩니다.",
+  },
+];
+
+const AGITATIONS = [
+  "거래처별로 조금씩 다른 문구를 매번 다시 쓰는 일",
+  "자료를 안 준 거래처를 다시 확인하는 일",
+  "상담 내용을 고객용으로 다시 정리하는 일",
+  "신고 결과를 고객 눈높이에 맞게 설명하는 일",
+];
 
 const FEATURES = [
   {
     icon: FileText,
-    title: "자료 요청 생성",
-    description:
-      "세목과 사업 유형만 선택하면 거래처에 보낼 자료 요청문이 완성됩니다.",
+    title: "자료 요청문 자동 생성",
+    description: "세목과 거래처 유형만 선택하면 바로 보낼 수 있는 자료 요청문을 생성합니다.",
+    inputLabel: "입력 예시",
+    inputs: ["부가세", "개인사업자", "온라인 쇼핑몰", "배달앱 매출", "인건비"],
+    outputLabel: "생성 결과",
+    outputs: [
+      "거래처에 보낼 자료 요청 안내문",
+      "누락되기 쉬운 자료 목록",
+      "제출 기한 안내",
+      "친절한 재요청 문구",
+    ],
   },
   {
     icon: MessagesSquare,
-    title: "상담 요약",
-    description:
-      "상담 메모나 녹음을 정리해 내부 요약·고객 전달용 요약·후속 조치를 만들어 드립니다.",
+    title: "상담 내용 정리",
+    description: "상담 메모를 붙여넣으면 세무사 업무 흐름에 맞게 정리합니다.",
+    inputLabel: "입력 예시",
+    inputs: ["상담 메모", "통화 내용", "방문 상담 기록"],
+    outputLabel: "생성 결과",
+    outputs: [
+      "상담 요약",
+      "고객에게 보낼 정리문",
+      "추가로 받아야 할 자료",
+      "내부 후속 조치",
+      "다음 안내 사항",
+    ],
   },
   {
     icon: Receipt,
-    title: "신고 결과 설명문",
-    description:
-      "세액 변동 내역을 고객이 이해하기 쉬운 설명문으로 자동 작성합니다.",
+    title: "신고 결과 설명문 생성",
+    description: "신고 결과와 주요 변동 사유를 입력하면 고객이 이해하기 쉬운 설명문을 생성합니다.",
+    inputLabel: "입력 예시",
+    inputs: ["납부세액", "전기 대비 증감", "매출 증가", "공제 감소", "예정고지 반영"],
+    outputLabel: "생성 결과",
+    outputs: [
+      "고객이 납득할 수 있는 설명 초안",
+      "전년 대비 변동 사유 설명",
+      "납부기한 안내",
+    ],
   },
 ];
 
-const PROBLEMS = [
-  { icon: ClipboardList, text: "거래처마다 반복되는 자료 요청 작성" },
-  { icon: RefreshCw, text: "누락 자료 재요청과 상담 내용 정리" },
-  { icon: Clock, text: "신고 결과 설명에 드는 반복 업무 시간" },
+const BEFORE = [
+  "거래처별 자료 요청문 작성",
+  "누락자료 재요청",
+  "“왜 필요한가요?” 설명",
+  "상담 후 메모 정리",
+  "고객에게 다시 요약 전달",
+  "신고 결과 설명문 작성",
+  "카톡 문구 복붙 후 수정",
 ];
 
-const PLAN_FEATURES = [
-  `자료 요청 생성 월 ${STARTER_PLAN.limits.request_generation.toLocaleString()}회`,
-  `상담 요약 월 ${STARTER_PLAN.limits.consultation_summary.toLocaleString()}회`,
-  `신고 결과 설명문 월 ${STARTER_PLAN.limits.report_explanation.toLocaleString()}회`,
-  "모든 결과 복사 및 생성 내역 보관",
+const AFTER = [
+  "세목 선택",
+  "거래처 유형 입력",
+  "특이사항 한 줄 추가",
+  "AI 초안 생성",
+  "세무사가 검토 후 발송",
+];
+
+const USE_CASES = [
+  {
+    title: "부가세 신고 전",
+    items: [
+      "“이번 부가세 신고 자료 요청드립니다” 문구 생성",
+      "거래처 유형별 필요 자료 안내",
+      "누락자료 재요청 문구 작성",
+    ],
+  },
+  {
+    title: "종합소득세 시즌",
+    items: [
+      "사업자별 필요자료 체크리스트 생성",
+      "인건비·임대료·대출·카드자료 누락 방지",
+      "자료 제출 기한 안내문 작성",
+    ],
+  },
+  {
+    title: "신규 수임 상담 후",
+    items: [
+      "상담 내용 요약",
+      "고객에게 보낼 정리문 작성",
+      "추가 요청 자료 및 내부 처리사항 정리",
+    ],
+  },
+  {
+    title: "신고 완료 후",
+    items: [
+      "납부세액 설명문 작성",
+      "전년 대비 증가 사유 설명",
+      "납부기한 안내로 고객 문의 감소",
+    ],
+  },
+];
+
+const VALUE_ITEMS = [
+  "자료 요청문 작성 시간",
+  "누락자료 재요청 시간",
+  "상담 후 정리 시간",
+  "신고 결과 설명문 작성 시간",
+  "거래처별 카톡 문구 수정 시간",
+];
+
+const TRUST_NOT = [
+  "세법 자문 자동화",
+  "세액 자동 계산",
+  "신고서 자동 작성",
+  "홈택스 자동 신고",
+  "세무사 판단 대체",
+];
+
+const TRUST_DO = [
+  "세무사가 검토할 고객 안내문 초안 생성",
+  "상담 내용을 구조화",
+  "필요한 자료 목록 정리",
+  "신고 결과 설명문 초안 작성",
+  "반복 커뮤니케이션 시간 절감",
+];
+
+const TESTIMONIALS = [
+  {
+    role: "개인 세무사 사무소 대표",
+    quote:
+      "자료 요청 문구를 매번 복붙하고 수정하는 시간이 꽤 컸는데, 초안이 바로 나오니 신고 시즌에 체감이 있습니다.",
+  },
+  {
+    role: "1인 세무사",
+    quote:
+      "세법 판단은 제가 하지만, 고객에게 설명하는 문장을 만드는 데 시간이 많이 걸렸습니다. 그 부분이 줄어드는 게 좋았습니다.",
+  },
+  {
+    role: "소형 세무법인 실무자",
+    quote:
+      "상담 후 정리할 때 필요한 자료와 후속 조치가 자동으로 분리되니 직원에게 전달하기가 편합니다.",
+  },
+];
+
+const FAQS = [
+  {
+    q: "TaxFlow가 세무 상담을 대신하나요?",
+    a: "아닙니다. TaxFlow는 세무사의 판단을 대신하지 않습니다. 세무사가 검토할 문서 초안을 만들어주는 도구입니다.",
+  },
+  {
+    q: "홈택스나 세무 프로그램과 연동되나요?",
+    a: "현재는 연동 없이 사용할 수 있습니다. 자료 요청, 상담 정리, 설명문 작성처럼 바로 체감되는 업무부터 지원합니다.",
+  },
+  {
+    q: "카카오톡으로 바로 보낼 수 있나요?",
+    a: "생성된 문구를 복사해서 카카오톡, 문자, 이메일에 붙여넣을 수 있습니다.",
+  },
+  {
+    q: "직원도 사용할 수 있나요?",
+    a: "Team 플랜에서 최대 5인 계정을 지원합니다. 개인 세무사는 Starter·Pro 플랜으로 시작하실 수 있습니다.",
+  },
+  {
+    q: "AI가 틀린 내용을 작성하면 어떻게 하나요?",
+    a: "모든 결과물은 초안입니다. 발송 전 세무사가 반드시 검토해야 합니다. TaxFlow는 최종 판단이나 세무 자문을 제공하지 않습니다.",
+  },
+  {
+    q: "어떤 세무사에게 적합한가요?",
+    a: "거래처 자료 요청이 반복되고, 카톡·이메일 응대가 많으며, 상담 후 정리와 신고 결과 설명문 작성에 시간이 드는 세무사에게 적합합니다.",
+  },
 ];
 
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
-      <header className="border-b border-border">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
           <span className="text-lg font-bold tracking-tight">TaxFlow</span>
+          <nav className="hidden items-center gap-1 md:flex">
+            <a
+              href="#features"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+            >
+              기능
+            </a>
+            <a
+              href="#pricing"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+            >
+              요금제
+            </a>
+            <a
+              href="#faq"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+            >
+              자주 묻는 질문
+            </a>
+          </nav>
           <div className="flex items-center gap-2">
             <Link
               href="/login"
@@ -61,39 +249,37 @@ export default function Home() {
             >
               로그인
             </Link>
-            <Link
-              href="/login"
-              className={cn(buttonVariants({ size: "sm" }))}
-            >
-              시작하기
+            <Link href="/login" className={cn(buttonVariants({ size: "sm" }))}>
+              무료로 시작하기
             </Link>
           </div>
         </div>
       </header>
 
       <main className="flex-1">
-        {/* Hero */}
+        {/* 1. Hero */}
         <section className="mx-auto w-full max-w-5xl px-4 py-20 text-center sm:px-6 sm:py-28">
           <span className="inline-block rounded-full border border-border px-3 py-1 text-sm text-muted-foreground">
-            세무사를 위한 업무 자동화 SaaS
+            세무사를 위한 고객 커뮤니케이션 자동화 도구
           </span>
-          <h1 className="mt-6 text-3xl font-bold tracking-tight sm:text-5xl">
-            반복되는 고객 커뮤니케이션,
+          <h1 className="mt-6 text-3xl font-bold leading-tight tracking-tight sm:text-5xl">
+            신고 마감일마다 거래처 자료 때문에
             <br />
-            TaxFlow로 자동화하세요
+            다시 쫓아다니고 계신가요?
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-            자료 요청문, 상담 요약, 신고 결과 설명문을 몇 초 만에 생성합니다.
-            세무사가 검토 후 고객에게 바로 전달할 수 있는 초안을 만들어 드립니다.
+          <p className="mx-auto mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
+            TaxFlow는 자료 요청문, 누락자료 재요청문, 상담 정리, 신고 결과
+            설명문을 세무사 업무 흐름에 맞게 자동 생성합니다. 세법 판단은
+            세무사가 하고, 반복 문구 작성은 TaxFlow가 초안을 만듭니다.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/login"
               className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
             >
-              무료로 시작하기
+              무료 체험 신청하기
             </Link>
-            <Link
+            <a
               href="#features"
               className={cn(
                 buttonVariants({ variant: "outline", size: "lg" }),
@@ -101,26 +287,36 @@ export default function Home() {
               )}
             >
               기능 살펴보기
-            </Link>
+            </a>
           </div>
+          <p className="mt-5 text-sm text-muted-foreground">
+            신용카드 등록 없음 · 설치 없음 · 3분 내 사용 가능
+          </p>
         </section>
 
-        {/* Problem */}
+        {/* 2. Pain */}
         <section className="border-t border-border bg-muted/30">
-          <div className="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6">
-            <h2 className="text-center text-2xl font-bold tracking-tight">
-              신고 시즌, 이런 업무에 시간을 쓰고 계신가요?
+          <div className="mx-auto w-full max-w-5xl px-4 py-16 sm:px-6 sm:py-20">
+            <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+              세무사님, 이런 일이 매번 반복되지 않나요?
             </h2>
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              {PROBLEMS.map((problem) => {
-                const Icon = problem.icon;
+            <div className="mt-10 grid gap-4 sm:grid-cols-2">
+              {PAINS.map((pain) => {
+                const Icon = pain.icon;
                 return (
                   <div
-                    key={problem.text}
-                    className="flex flex-col items-center gap-3 rounded-xl bg-background px-6 py-8 text-center ring-1 ring-foreground/10"
+                    key={pain.title}
+                    className="flex gap-4 rounded-xl bg-background p-6 ring-1 ring-foreground/10"
                   >
-                    <Icon className="size-6 text-muted-foreground" />
-                    <p className="text-sm">{problem.text}</p>
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <Icon className="size-5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">{pain.title}</p>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        {pain.body}
+                      </p>
+                    </div>
                   </div>
                 );
               })}
@@ -128,98 +324,378 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Solution / Features */}
-        <section id="features" className="mx-auto w-full max-w-5xl px-4 py-20 sm:px-6">
-          <div className="text-center">
+        {/* 3. Problem Agitation */}
+        <section className="mx-auto w-full max-w-5xl px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              세 가지 핵심 기능
+              세무사가 힘든 이유는 세법 때문만이 아닙니다.
             </h2>
-            <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-              문서 작성 중심의 반복 업무를 AI가 대신합니다. 세무사는 검토와 발송에만
-              집중하세요.
+            <p className="mt-3 text-muted-foreground">
+              진짜 반복되는 피로는 이런 일입니다.
             </p>
           </div>
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
-            {FEATURES.map((feature) => {
-              const Icon = feature.icon;
-              return (
-                <Card key={feature.title} className="h-full">
-                  <CardHeader>
-                    <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-muted">
-                      <Icon className="size-5" />
-                    </div>
-                    <CardTitle className="text-lg">{feature.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {feature.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              );
-            })}
+          <ul className="mx-auto mt-10 grid max-w-3xl gap-3 sm:grid-cols-2">
+            {AGITATIONS.map((item) => (
+              <li
+                key={item}
+                className="flex items-center gap-3 rounded-lg border border-border px-4 py-4 text-sm font-medium"
+              >
+                <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+                {item}
+              </li>
+            ))}
+          </ul>
+          <p className="mx-auto mt-8 max-w-2xl text-center text-muted-foreground">
+            이 일들은 중요하지만, 매번 세무사가 처음부터 작성할 필요는 없습니다.
+          </p>
+        </section>
+
+        {/* 4. Solution / Features */}
+        <section
+          id="features"
+          className="scroll-mt-16 border-t border-border bg-muted/30"
+        >
+          <div className="mx-auto w-full max-w-5xl px-4 py-20 sm:px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                TaxFlow가 반복 문구의 초안을 만들어드립니다.
+              </h2>
+              <p className="mt-3 text-muted-foreground">
+                세법 판단을 대신하지 않습니다. 세무사가 이미 알고 있는 내용을
+                고객에게 보낼 수 있는 문장으로 빠르게 정리합니다.
+              </p>
+            </div>
+            <div className="mt-12 space-y-5">
+              {FEATURES.map((feature) => {
+                const Icon = feature.icon;
+                return (
+                  <Card key={feature.title}>
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                          <Icon className="size-5" />
+                        </div>
+                        <CardTitle className="text-lg">
+                          {feature.title}
+                        </CardTitle>
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        {feature.description}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            {feature.inputLabel}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {feature.inputs.map((input) => (
+                              <span
+                                key={input}
+                                className="rounded-full border border-border px-3 py-1 text-xs"
+                              >
+                                {input}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            {feature.outputLabel}
+                          </p>
+                          <ul className="mt-3 space-y-2">
+                            {feature.outputs.map((output) => (
+                              <li
+                                key={output}
+                                className="flex items-start gap-2 text-sm"
+                              >
+                                <Check className="mt-0.5 size-4 shrink-0 text-foreground" />
+                                <span>{output}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         </section>
 
-        {/* Pricing */}
+        {/* 5. Before / After */}
+        <section className="mx-auto w-full max-w-5xl px-4 py-20 sm:px-6">
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="rounded-xl border border-border p-6">
+              <p className="text-sm font-medium text-muted-foreground">
+                TaxFlow 사용 전
+              </p>
+              <p className="mt-1 font-semibold">
+                신고 시즌마다 반복됩니다.
+              </p>
+              <ul className="mt-5 space-y-2">
+                {BEFORE.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm">
+                    <X className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <span className="text-muted-foreground">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-foreground bg-muted/30 p-6 ring-1 ring-foreground/10">
+              <p className="text-sm font-medium text-muted-foreground">
+                TaxFlow 사용 후
+              </p>
+              <p className="mt-1 font-semibold">
+                반복 문구는 초안부터 시작합니다.
+              </p>
+              <ul className="mt-5 space-y-2">
+                {AFTER.map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm">
+                    <Check className="mt-0.5 size-4 shrink-0 text-foreground" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <p className="mx-auto mt-8 max-w-2xl text-center text-muted-foreground">
+            세무사는 판단에 집중하고, TaxFlow는 반복 작성 시간을 줄입니다.
+          </p>
+        </section>
+
+        {/* 6. Use Cases */}
         <section className="border-t border-border bg-muted/30">
           <div className="mx-auto w-full max-w-5xl px-4 py-20 sm:px-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                간단한 요금제
-              </h2>
-              <p className="mt-3 text-muted-foreground">
-                필요한 기능을 하나의 플랜으로 제공합니다.
-              </p>
-            </div>
-            <div className="mx-auto mt-10 max-w-md">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    {STARTER_PLAN.name}
-                  </CardTitle>
-                  <div className="mt-2 flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">
-                      {STARTER_PLAN.priceKrw.toLocaleString()}원
-                    </span>
-                    <span className="text-sm text-muted-foreground">/ 월</span>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ul className="space-y-2">
-                    {PLAN_FEATURES.map((item) => (
-                      <li key={item} className="flex items-center gap-2 text-sm">
-                        <Check className="size-4 shrink-0 text-foreground" />
-                        {item}
+            <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+              이런 상황에서 바로 쓸 수 있습니다.
+            </h2>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2">
+              {USE_CASES.map((useCase) => (
+                <div
+                  key={useCase.title}
+                  className="rounded-xl bg-background p-6 ring-1 ring-foreground/10"
+                >
+                  <p className="font-semibold">{useCase.title}</p>
+                  <ul className="mt-4 space-y-2">
+                    {useCase.items.map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-sm">
+                        <Check className="mt-0.5 size-4 shrink-0 text-foreground" />
+                        <span className="text-muted-foreground">{item}</span>
                       </li>
                     ))}
                   </ul>
-                  <Link
-                    href="/login"
-                    className={cn(buttonVariants({ size: "lg" }), "w-full")}
-                  >
-                    시작하기
-                  </Link>
-                </CardContent>
-              </Card>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* CTA */}
+        {/* 7. Value Proposition */}
         <section className="mx-auto w-full max-w-5xl px-4 py-20 text-center sm:px-6">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            지금 바로 업무 시간을 줄여보세요
+          <h2 className="mx-auto max-w-2xl text-2xl font-bold tracking-tight sm:text-3xl">
+            하루 30분만 줄어도, 한 달이면 10시간 이상입니다.
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-            가입 후 첫 자료 요청문을 1분 안에 만들어 보실 수 있습니다.
+          <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
+            세무사님이 직접 하지 않아도 되는 반복 문구 작성. 이제 매번 처음부터
+            쓰지 마세요.
           </p>
-          <Link
-            href="/login"
-            className={cn(buttonVariants({ size: "lg" }), "mt-8")}
-          >
-            무료로 시작하기
-          </Link>
+          <div className="mx-auto mt-10 flex max-w-3xl flex-wrap justify-center gap-2">
+            {VALUE_ITEMS.map((item) => (
+              <span
+                key={item}
+                className="rounded-full border border-border px-4 py-2 text-sm"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+          <p className="mx-auto mt-8 max-w-2xl text-sm text-muted-foreground">
+            단순한 AI 채팅이 아니라, 세무사 업무에 맞춘 문서 생성 흐름입니다.
+          </p>
+        </section>
+
+        {/* 8. Trust */}
+        <section className="border-t border-border bg-muted/30">
+          <div className="mx-auto w-full max-w-5xl px-4 py-20 sm:px-6">
+            <h2 className="mx-auto max-w-2xl text-center text-2xl font-bold tracking-tight sm:text-3xl">
+              세무 판단은 하지 않습니다. 그래서 더 안전하게 시작할 수 있습니다.
+            </h2>
+            <div className="mt-10 grid gap-5 md:grid-cols-2">
+              <div className="rounded-xl bg-background p-6 ring-1 ring-foreground/10">
+                <p className="font-semibold">TaxFlow가 하지 않는 것</p>
+                <ul className="mt-4 space-y-2">
+                  {TRUST_NOT.map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm">
+                      <X className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                      <span className="text-muted-foreground">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-xl bg-background p-6 ring-1 ring-foreground/10">
+                <p className="font-semibold">TaxFlow가 하는 것</p>
+                <ul className="mt-4 space-y-2">
+                  {TRUST_DO.map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm">
+                      <Check className="mt-0.5 size-4 shrink-0 text-foreground" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-muted-foreground">
+              모든 결과물은 초안입니다. 발송 전 세무사가 반드시 검토합니다.
+            </p>
+          </div>
+        </section>
+
+        {/* 9. Testimonials */}
+        <section className="mx-auto w-full max-w-5xl px-4 py-20 sm:px-6">
+          <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+            베타 사용자 피드백
+          </h2>
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            {TESTIMONIALS.map((testimonial) => (
+              <Card key={testimonial.role} className="h-full">
+                <CardContent className="flex h-full flex-col gap-4 pt-6">
+                  <Quote className="size-6 text-muted-foreground" />
+                  <p className="flex-1 text-sm leading-relaxed">
+                    “{testimonial.quote}”
+                  </p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {testimonial.role}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* 10. Pricing */}
+        <section
+          id="pricing"
+          className="scroll-mt-16 border-t border-border bg-muted/30"
+        >
+          <div className="mx-auto w-full max-w-5xl px-4 py-20 sm:px-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                무료 체험 후 결정하세요.
+              </h2>
+              <p className="mt-3 text-muted-foreground">
+                신용카드 없이 14일 무료 체험으로 먼저 확인하세요. 연 결제 시
+                2개월 무료입니다. (부가세 별도)
+              </p>
+            </div>
+            <div className="mt-12 grid gap-5 lg:grid-cols-3">
+              {PURCHASABLE_PLAN_IDS.map((planId) => {
+                const plan = PLANS[planId];
+                return (
+                  <Card
+                    key={plan.id}
+                    className={cn(
+                      "relative h-full overflow-visible",
+                      plan.highlight &&
+                        "border-foreground ring-1 ring-foreground/10",
+                    )}
+                  >
+                    {plan.badge && (
+                      <span className="absolute -top-3 left-6 rounded-full bg-foreground px-3 py-1 text-xs font-medium text-background">
+                        {plan.badge}
+                      </span>
+                    )}
+                    <CardHeader>
+                      <CardTitle className="text-lg">{plan.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        {plan.tagline}
+                      </p>
+                      <div className="mt-2 flex items-baseline gap-1">
+                        <span className="text-3xl font-bold">
+                          {formatKrw(plan.monthlyPrice)}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          / 월
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <ul className="space-y-2">
+                        {plan.features.map((item) => (
+                          <li
+                            key={item}
+                            className="flex items-start gap-2 text-sm"
+                          >
+                            <Check className="mt-0.5 size-4 shrink-0 text-foreground" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <Link
+                        href="/login"
+                        className={cn(
+                          buttonVariants({
+                            size: "lg",
+                            variant: plan.highlight ? "default" : "outline",
+                          }),
+                          "w-full",
+                        )}
+                      >
+                        시작하기
+                      </Link>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* 11. FAQ */}
+        <section id="faq" className="scroll-mt-16">
+          <div className="mx-auto w-full max-w-3xl px-4 py-20 sm:px-6">
+            <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+              자주 묻는 질문
+            </h2>
+            <div className="mt-10 divide-y divide-border rounded-xl border border-border">
+              {FAQS.map((faq) => (
+                <details key={faq.q} className="group px-5 py-4">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium">
+                    {faq.q}
+                    <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
+                  </summary>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                    {faq.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 12. Final CTA */}
+        <section className="border-t border-border bg-muted/30">
+          <div className="mx-auto w-full max-w-5xl px-4 py-20 text-center sm:px-6">
+            <h2 className="mx-auto max-w-2xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
+              이번 신고 시즌에도 거래처 자료 때문에 계속 쫓아다니실 건가요?
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
+              자료 요청문, 누락자료 재요청, 상담 정리, 신고 결과 설명문. 반복되는
+              문서 작성은 TaxFlow로 줄이세요. 세무사는 판단에 집중하고, TaxFlow는
+              반복 커뮤니케이션 초안을 만듭니다.
+            </p>
+            <Link
+              href="/login"
+              className={cn(buttonVariants({ size: "lg" }), "mt-8")}
+            >
+              무료 체험 신청하기
+            </Link>
+            <p className="mt-5 text-sm text-muted-foreground">
+              신용카드 등록 없음 · 설치 없음 · 바로 사용 가능
+            </p>
+          </div>
         </section>
       </main>
 

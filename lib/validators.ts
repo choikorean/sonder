@@ -48,15 +48,29 @@ export const reportExplanationSchema = z.object({
     .string()
     .max(500, "변동 사유는 500자 이내로 입력해 주세요.")
     .nullish(),
+  dueDate: z
+    .string()
+    .max(100, "납부기한은 100자 이내로 입력해 주세요.")
+    .nullish(),
   memo: z
     .string()
     .max(1000, "특이사항은 1000자 이내로 입력해 주세요.")
     .nullish(),
 });
 
+export const checkoutSchema = z.object({
+  planId: z.enum(["starter", "pro", "team"], {
+    error: "결제할 요금제를 선택해 주세요.",
+  }),
+  cycle: z.enum(["monthly", "yearly"], {
+    error: "결제 주기를 선택해 주세요.",
+  }),
+});
+
 export type RequestGenerateInput = z.infer<typeof requestGenerateSchema>;
 export type ConsultationSummaryInput = z.infer<typeof consultationSummarySchema>;
 export type ReportExplanationInput = z.infer<typeof reportExplanationSchema>;
+export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
 /** ZodError에서 사용자에게 보여줄 첫 번째 한국어 메시지를 추출합니다. */
 export function firstZodErrorMessage(error: ZodError): string {

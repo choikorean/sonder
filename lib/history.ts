@@ -19,6 +19,7 @@ export type ConsultationHistoryItem = {
   clientSummary: string;
   requiredDocuments: string | null;
   nextActions: string | null;
+  nextGuidance: string | null;
   transcript: string | null;
   hasAudio: boolean;
   createdAt: string;
@@ -30,6 +31,7 @@ export type ReportHistoryItem = {
   currentTax: number;
   previousTax: number | null;
   changeReason: string | null;
+  dueDate: string | null;
   memo: string | null;
   result: string;
   createdAt: string;
@@ -50,16 +52,16 @@ export async function getHistory(supabase: SupabaseServer): Promise<HistoryData>
       .limit(LIMIT),
     supabase
       .from("consultation_summaries")
-      .select(
-        "id, summary, client_summary, required_documents, next_actions, transcript, audio_url, created_at",
-      )
+        .select(
+          "id, summary, client_summary, required_documents, next_actions, next_guidance, transcript, audio_url, created_at",
+        )
       .order("created_at", { ascending: false })
       .limit(LIMIT),
     supabase
       .from("report_explanations")
-      .select(
-        "id, tax_type, current_tax, previous_tax, change_reason, memo, result, created_at",
-      )
+        .select(
+          "id, tax_type, current_tax, previous_tax, change_reason, due_date, memo, result, created_at",
+        )
       .order("created_at", { ascending: false })
       .limit(LIMIT),
   ]);
@@ -77,21 +79,23 @@ export async function getHistory(supabase: SupabaseServer): Promise<HistoryData>
       id: row.id,
       summary: row.summary,
       clientSummary: row.client_summary,
-      requiredDocuments: row.required_documents,
-      nextActions: row.next_actions,
-      transcript: row.transcript,
-      hasAudio: row.audio_url != null,
-      createdAt: row.created_at,
-    })),
+        requiredDocuments: row.required_documents,
+        nextActions: row.next_actions,
+        nextGuidance: row.next_guidance,
+        transcript: row.transcript,
+        hasAudio: row.audio_url != null,
+        createdAt: row.created_at,
+      })),
     reports: (reports.data ?? []).map((row) => ({
       id: row.id,
       taxType: row.tax_type,
-      currentTax: row.current_tax,
-      previousTax: row.previous_tax,
-      changeReason: row.change_reason,
-      memo: row.memo,
-      result: row.result,
-      createdAt: row.created_at,
-    })),
+        currentTax: row.current_tax,
+        previousTax: row.previous_tax,
+        changeReason: row.change_reason,
+        dueDate: row.due_date,
+        memo: row.memo,
+        result: row.result,
+        createdAt: row.created_at,
+      })),
   };
 }

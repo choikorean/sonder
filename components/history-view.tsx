@@ -50,7 +50,9 @@ function Section({ title, value }: { title: string; value: string | null }) {
         <p className="text-xs font-medium text-muted-foreground">{title}</p>
         <CopyButton text={content} />
       </div>
-      <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+      <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+        {content}
+      </p>
     </div>
   );
 }
@@ -111,7 +113,7 @@ export function HistoryView({ data }: { data: HistoryData }) {
                       특이사항: {item.memo}
                     </p>
                   )}
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                     {item.result}
                   </p>
                 </CardContent>
@@ -143,10 +145,11 @@ export function HistoryView({ data }: { data: HistoryData }) {
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Section title="내부 요약" value={item.summary} />
-                  <Section title="고객 전달용 요약" value={item.clientSummary} />
-                  <Section title="필요 자료" value={item.requiredDocuments} />
-                  <Section title="후속 조치" value={item.nextActions} />
+                  <Section title="상담 요약" value={item.summary} />
+                  <Section title="고객 전달용 정리문" value={item.clientSummary} />
+                  <Section title="추가로 받아야 할 자료" value={item.requiredDocuments} />
+                  <Section title="내부 후속 조치" value={item.nextActions} />
+                  <Section title="다음 안내 사항" value={item.nextGuidance} />
                 </CardContent>
               </Card>
             ))
@@ -178,8 +181,9 @@ export function HistoryView({ data }: { data: HistoryData }) {
                     {item.previousTax != null &&
                       ` · 이전 세액: ${item.previousTax.toLocaleString()}원`}
                     {item.changeReason && ` · 변동 사유: ${item.changeReason}`}
+                    {item.dueDate && ` · 납부기한: ${item.dueDate}`}
                   </p>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                     {item.result}
                   </p>
                 </CardContent>

@@ -12,6 +12,7 @@ import {
   OPENAI_TEMPERATURE,
 } from "@/lib/openai";
 import { successResponse, errorResponse } from "@/lib/api-response";
+import { getUsageStatus, recordUsage, usageLimitMessage } from "@/lib/usage";
 
 export async function POST(request: NextRequest) {
   const { supabase, user } = await getAuthContext();
@@ -31,9 +32,16 @@ export async function POST(request: NextRequest) {
     return errorResponse(firstZodErrorMessage(parsed.error), 400);
   }
 
-  const { taxType, currentTax, previousTax, changeReason, memo } = parsed.data;
+  const { taxType, currentTax, previousTax, changeReason, dueDate, memo } =
+    parsed.data;
+
+  const usage = await getUsageStatus(supabase);
+  if (!usage.allowed) {
+    return errorResponse(usageLimitMessage(usage.plan), 429);
+  }
 
   let result: string;
+  let tokensEstimated: number | null = null;
   try {
     const openai = getOpenAIClient();
     const { system, user: userPrompt } = buildTaxExplanationPrompt({
@@ -41,6 +49,7 @@ export async function POST(request: NextRequest) {
       currentTax,
       previousTax,
       changeReason,
+      dueDate,
       memo,
     });
 
@@ -54,6 +63,7 @@ export async function POST(request: NextRequest) {
     });
 
     result = completion.choices[0]?.message?.content?.trim() ?? "";
+    tokensEstimated = completion.usage?.total_tokens ?? null;
     if (!result) {
       throw new Error("빈 응답");
     }
@@ -69,6 +79,7 @@ export async function POST(request: NextRequest) {
       current_tax: currentTax,
       previous_tax: previousTax ?? null,
       change_reason: changeReason ?? null,
+      due_date: dueDate ?? null,
       memo: memo ?? null,
       result,
     })
@@ -78,6 +89,8 @@ export async function POST(request: NextRequest) {
   if (dbError) {
     return errorResponse("결과 저장에 실패했습니다.", 500);
   }
+
+  await recordUsage(supabase, user.id, "report_explanation", tokensEstimated);
 
   return successResponse({ id: saved.id, result });
 }

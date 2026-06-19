@@ -31,6 +31,7 @@ export function ReportForm() {
   const [currentTax, setCurrentTax] = useState("");
   const [previousTax, setPreviousTax] = useState("");
   const [changeReason, setChangeReason] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [memo, setMemo] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export function ReportForm() {
           currentTax: Number(currentTax),
           previousTax: previousTax.trim() ? Number(previousTax) : undefined,
           changeReason: changeReason.trim() || undefined,
+          dueDate: dueDate.trim() || undefined,
           memo: memo.trim() || undefined,
         }),
       });
@@ -143,6 +145,18 @@ export function ReportForm() {
                   value={changeReason}
                   onChange={(e) => setChangeReason(e.target.value)}
                   placeholder="예) 매출 증가"
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dueDate">납부기한 (선택)</Label>
+                <Input
+                  id="dueDate"
+                  type="text"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  placeholder="예) 2026-07-25"
                   disabled={loading}
                 />
               </div>

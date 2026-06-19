@@ -24,7 +24,7 @@ export function GeneratedOutput({
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="rounded-md bg-muted/40 p-4 text-sm leading-relaxed whitespace-pre-wrap">
+        <div className="rounded-md bg-muted/40 p-4 text-sm leading-relaxed whitespace-pre-wrap break-words">
           {content}
         </div>
         <ReviewDisclaimer />

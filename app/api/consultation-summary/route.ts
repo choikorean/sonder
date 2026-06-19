@@ -15,6 +15,7 @@ import {
 } from "@/lib/openai";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { AUDIO_MAX_BYTES, AUDIO_ALLOWED_MIME_TYPES } from "@/lib/constants";
+import { getUsageStatus, recordUsage, usageLimitMessage } from "@/lib/usage";
 
 const AUDIO_BUCKET = "consultation-audio";
 
@@ -23,9 +24,12 @@ type SummaryFields = {
   clientSummary: string;
   requiredDocuments: string;
   nextActions: string;
+  nextGuidance: string;
 };
 
-async function summarize(text: string): Promise<SummaryFields> {
+async function summarize(
+  text: string,
+): Promise<{ fields: SummaryFields; tokens: number | null }> {
   const openai = getOpenAIClient();
   const { system, user } = buildConsultationSummaryPrompt({ text });
 
@@ -43,10 +47,14 @@ async function summarize(text: string): Promise<SummaryFields> {
   const parsed = JSON.parse(content) as Record<string, unknown>;
 
   return {
-    summary: String(parsed.summary ?? "").trim(),
-    clientSummary: String(parsed.clientSummary ?? "").trim(),
-    requiredDocuments: String(parsed.requiredDocuments ?? "").trim(),
-    nextActions: String(parsed.nextActions ?? "").trim(),
+    fields: {
+      summary: String(parsed.summary ?? "").trim(),
+      clientSummary: String(parsed.clientSummary ?? "").trim(),
+      requiredDocuments: String(parsed.requiredDocuments ?? "").trim(),
+      nextActions: String(parsed.nextActions ?? "").trim(),
+      nextGuidance: String(parsed.nextGuidance ?? "").trim(),
+    },
+    tokens: completion.usage?.total_tokens ?? null,
   };
 }
 
@@ -59,6 +67,11 @@ export async function POST(request: NextRequest) {
   const { supabase, user } = await getAuthContext();
   if (!user) {
     return errorResponse("로그인이 필요합니다.", 401);
+  }
+
+  const usage = await getUsageStatus(supabase);
+  if (!usage.allowed) {
+    return errorResponse(usageLimitMessage(usage.plan), 429);
   }
 
   const contentType = request.headers.get("content-type") ?? "";
@@ -151,8 +164,11 @@ export async function POST(request: NextRequest) {
   }
 
   let fields: SummaryFields;
+  let tokensEstimated: number | null = null;
   try {
-    fields = await summarize(sourceText);
+    const result = await summarize(sourceText);
+    fields = result.fields;
+    tokensEstimated = result.tokens;
     if (!fields.summary || !fields.clientSummary) {
       throw new Error("요약 결과 누락");
     }
@@ -171,6 +187,7 @@ export async function POST(request: NextRequest) {
       client_summary: fields.clientSummary,
       required_documents: fields.requiredDocuments || null,
       next_actions: fields.nextActions || null,
+      next_guidance: fields.nextGuidance || null,
     })
     .select("id")
     .single();
@@ -179,6 +196,8 @@ export async function POST(request: NextRequest) {
     return errorResponse("결과 저장에 실패했습니다.", 500);
   }
 
+  await recordUsage(supabase, user.id, "consultation_summary", tokensEstimated);
+
   return successResponse({
     id: saved.id,
     transcript,
@@ -186,5 +205,6 @@ export async function POST(request: NextRequest) {
     clientSummary: fields.clientSummary,
     requiredDocuments: fields.requiredDocuments,
     nextActions: fields.nextActions,
+    nextGuidance: fields.nextGuidance,
   });
 }
