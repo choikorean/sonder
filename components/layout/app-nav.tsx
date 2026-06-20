@@ -16,7 +16,7 @@ const NAV_ITEMS = [
   { href: "/reports", label: "신고 결과 설명문" },
   { href: "/history", label: "생성 내역" },
   { href: "/billing", label: "요금제" },
-  { href: "/settings", label: "설정" },
+  { href: "/settings/billing", label: "결제 및 구독" },
 ] as const;
 
 export function AppNav({ email }: { email: string }) {

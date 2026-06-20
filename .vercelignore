@@ -1,0 +1,8 @@
+# 배포에 불필요한 기획/문서/SQL 파일 제외
+CLAUDE.md
+PRD.md
+Price.md
+LandingPage.md
+tasks.md
+database.sql
+docs_backup

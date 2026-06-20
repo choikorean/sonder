@@ -30,8 +30,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (실제 키가 담긴 파일은 절대 커밋 금지)
+# SUPABASE_SERVICE_ROLE_KEY, OPENAI_API_KEY 등 서버 전용 시크릿 보호
+.env
+.env.*
+# 시크릿 없는 템플릿만 예외적으로 커밋 허용
+!.env.example
 
 # vercel
 .vercel

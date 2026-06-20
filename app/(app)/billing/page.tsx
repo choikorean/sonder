@@ -2,26 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getSubscription } from "@/lib/subscription";
 import { getUsageStatus } from "@/lib/usage";
 import { PlanSelector } from "@/components/billing/plan-selector";
+import {
+  BILLING_STATUS_LABELS,
+  formatBillingDate,
+} from "@/lib/billing/helpers";
 
 export const metadata = {
   title: "요금제",
 };
-
-const STATUS_LABELS: Record<string, string> = {
-  active: "이용 중",
-  trialing: "무료 체험 중",
-  past_due: "결제 실패",
-  canceled: "해지 예정",
-  inactive: "미구독",
-};
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 export default async function BillingPage() {
   const supabase = await createClient();
@@ -51,20 +39,35 @@ export default async function BillingPage() {
             <p className="mt-1 text-xl font-semibold">
               {subscription.plan.name}
               <span className="ml-2 text-sm font-normal text-muted-foreground">
-                {STATUS_LABELS[subscription.status] ?? subscription.status}
+                {BILLING_STATUS_LABELS[
+                  subscription.cancelAtPeriodEnd ? "canceled" : subscription.status
+                ] ?? subscription.status}
               </span>
             </p>
           </div>
-          {subscription.isActive && subscription.currentPeriodEnd && (
+          {subscription.isActive && (
             <div className="text-right">
               <p className="text-sm text-muted-foreground">
                 {subscription.isTrialing ? "체험 종료일" : "다음 갱신일"}
               </p>
               <p className="mt-1 text-sm font-medium">
-                {formatDate(subscription.currentPeriodEnd)}
+                {formatBillingDate(
+                  subscription.isTrialing
+                    ? subscription.trialEndsAt ?? subscription.currentPeriodEnd
+                    : subscription.nextBillingAt ?? subscription.currentPeriodEnd,
+                )}
               </p>
             </div>
           )}
+        </div>
+
+        <div className="mt-4">
+          <a
+            href="/settings/billing"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            결제 및 구독 관리 →
+          </a>
         </div>
 
         <div className="mt-6 space-y-2">

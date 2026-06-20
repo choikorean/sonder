@@ -67,6 +67,34 @@ export const checkoutSchema = z.object({
   }),
 });
 
+export const billingPrepareSchema = checkoutSchema.extend({
+  checkoutType: z.enum(["subscription", "change_card"]).default("subscription"),
+  agreeRecurring: z.literal(true, {
+    error: "매월 정기결제에 동의해 주세요.",
+  }),
+  agreeTrialCharge: z.literal(true, {
+    error: "무료 체험 종료 후 자동 결제에 동의해 주세요.",
+  }),
+  agreeTerms: z.literal(true, {
+    error: "이용약관 및 개인정보처리방침에 동의해 주세요.",
+  }),
+});
+
+export const billingCancelSchema = z.object({
+  reason: z
+    .enum([
+      "price",
+      "low_usage",
+      "missing_features",
+      "other_service",
+      "other",
+    ])
+    .optional(),
+});
+
+export type BillingPrepareInput = z.infer<typeof billingPrepareSchema>;
+export type BillingCancelInput = z.infer<typeof billingCancelSchema>;
+
 export type RequestGenerateInput = z.infer<typeof requestGenerateSchema>;
 export type ConsultationSummaryInput = z.infer<typeof consultationSummarySchema>;
 export type ReportExplanationInput = z.infer<typeof reportExplanationSchema>;

@@ -34,24 +34,11 @@ export function PlanSelector({ currentPlanId, isActive, canStartTrial }: Props) 
     setNotice(null);
     setError(null);
     try {
-      const res = await fetch("/api/billing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, cycle }),
-      });
-      const json = await res.json();
-      if (!json.success) {
-        setError(json.error ?? "결제 요청에 실패했습니다.");
-        return;
-      }
-      if (json.data.redirectUrl) {
-        window.location.href = json.data.redirectUrl;
-        return;
-      }
-      setNotice(json.data.message ?? "주문이 접수되었습니다.");
-      router.refresh();
+      router.push(
+        `/billing/checkout?plan=${planId}&cycle=${cycle}`,
+      );
     } catch {
-      setError("결제 요청 중 오류가 발생했습니다.");
+      setError("결제 화면으로 이동하지 못했습니다.");
     } finally {
       setLoadingPlan(null);
     }
@@ -176,9 +163,9 @@ export function PlanSelector({ currentPlanId, isActive, canStartTrial }: Props) 
               >
                 {isCurrent
                   ? "이용 중인 플랜"
-                  : loadingPlan === plan.id
-                    ? "처리 중..."
-                    : "결제하기"}
+                    : loadingPlan === plan.id
+                    ? "이동 중..."
+                    : "구독 시작하기"}
               </Button>
             </div>
           );
