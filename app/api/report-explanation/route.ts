@@ -13,6 +13,8 @@ import {
 } from "@/lib/openai";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { getUsageStatus, recordUsage, usageLimitMessage } from "@/lib/usage";
+import { getSubscriberContext } from "@/lib/subscriber-context";
+import { getPhraseContentsForPrompt } from "@/lib/saved-phrases";
 
 export async function POST(request: NextRequest) {
   const { supabase, user } = await getAuthContext();
@@ -40,6 +42,12 @@ export async function POST(request: NextRequest) {
     return errorResponse(usageLimitMessage(usage.plan), 429);
   }
 
+  const ctx = await getSubscriberContext(supabase);
+  const phrases = await getPhraseContentsForPrompt(
+    supabase,
+    ctx.capabilities,
+  );
+
   let result: string;
   let tokensEstimated: number | null = null;
   try {
@@ -51,6 +59,8 @@ export async function POST(request: NextRequest) {
       changeReason,
       dueDate,
       memo,
+      profile: ctx.capabilities.officeSignature ? ctx.profile : null,
+      phrases,
     });
 
     const completion = await openai.chat.completions.create({
@@ -92,5 +102,9 @@ export async function POST(request: NextRequest) {
 
   await recordUsage(supabase, user.id, "report_explanation", tokensEstimated);
 
-  return successResponse({ id: saved.id, result });
+  return successResponse({
+    id: saved.id,
+    result,
+    copyFormats: ctx.capabilities.copyFormats,
+  });
 }

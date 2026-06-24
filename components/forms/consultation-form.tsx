@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { LoadingButton } from "@/components/loading-button";
+import { CopyFormatActions } from "@/components/copy-format-actions";
 import { CopyButton } from "@/components/copy-button";
 import { ReviewDisclaimer } from "@/components/review-disclaimer";
 import { Label } from "@/components/ui/label";
@@ -26,10 +27,20 @@ type SummaryData = {
 };
 
 type ApiResult =
-  | { success: true; data: SummaryData & { id: string } }
+  | { success: true; data: SummaryData & { id: string; copyFormats?: boolean } }
   | { success: false; error: string };
 
-function OutputSection({ title, value }: { title: string; value: string }) {
+function OutputSection({
+  title,
+  value,
+  copyFormats = false,
+  emailSubject,
+}: {
+  title: string;
+  value: string;
+  copyFormats?: boolean;
+  emailSubject?: string;
+}) {
   const content = value.trim();
   return (
     <Card>
@@ -37,7 +48,11 @@ function OutputSection({ title, value }: { title: string; value: string }) {
         <CardTitle className="text-base">{title}</CardTitle>
         {content && (
           <CardAction>
-            <CopyButton text={content} />
+            <CopyFormatActions
+              text={content}
+              copyFormats={copyFormats}
+              emailSubject={emailSubject}
+            />
           </CardAction>
         )}
       </CardHeader>
@@ -60,6 +75,7 @@ export function ConsultationForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<SummaryData | null>(null);
+  const [copyFormats, setCopyFormats] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -96,6 +112,7 @@ export function ConsultationForm() {
         setError(json.error);
       } else {
         setData(json.data);
+        setCopyFormats(json.data.copyFormats ?? false);
       }
     } catch {
       setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
@@ -170,10 +187,25 @@ export function ConsultationForm() {
           )}
 
           <OutputSection title="상담 요약" value={data.summary} />
-          <OutputSection title="고객 전달용 정리문" value={data.clientSummary} />
-          <OutputSection title="추가로 받아야 할 자료" value={data.requiredDocuments} />
+          <OutputSection
+            title="고객 전달용 정리문"
+            value={data.clientSummary}
+            copyFormats={copyFormats}
+            emailSubject="상담 내용 정리"
+          />
+          <OutputSection
+            title="추가로 받아야 할 자료"
+            value={data.requiredDocuments}
+            copyFormats={copyFormats}
+            emailSubject="추가 자료 요청"
+          />
           <OutputSection title="내부 후속 조치" value={data.nextActions} />
-          <OutputSection title="다음 안내 사항" value={data.nextGuidance} />
+          <OutputSection
+            title="다음 안내 사항"
+            value={data.nextGuidance}
+            copyFormats={copyFormats}
+            emailSubject="다음 안내"
+          />
 
           <ReviewDisclaimer />
         </div>

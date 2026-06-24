@@ -5,22 +5,30 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CopyButton } from "@/components/copy-button";
+import { CopyFormatActions } from "@/components/copy-format-actions";
 import { ReviewDisclaimer } from "@/components/review-disclaimer";
 
 export function GeneratedOutput({
   title = "생성 결과",
   content,
+  copyFormats = false,
+  emailSubject,
 }: {
   title?: string;
   content: string;
+  copyFormats?: boolean;
+  emailSubject?: string;
 }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardAction>
-          <CopyButton text={content} />
+          <CopyFormatActions
+            text={content}
+            copyFormats={copyFormats}
+            emailSubject={emailSubject}
+          />
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-3">

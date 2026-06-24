@@ -100,6 +100,40 @@ export type ConsultationSummaryInput = z.infer<typeof consultationSummarySchema>
 export type ReportExplanationInput = z.infer<typeof reportExplanationSchema>;
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
+export const profileUpdateSchema = z.object({
+  name: z
+    .string()
+    .max(50, "담당자명은 50자 이내로 입력해 주세요.")
+    .nullish(),
+  officeName: z
+    .string()
+    .max(100, "사무소명은 100자 이내로 입력해 주세요.")
+    .nullish(),
+  phone: z
+    .string()
+    .max(30, "연락처는 30자 이내로 입력해 주세요.")
+    .nullish(),
+});
+
+export const savedPhraseSchema = z.object({
+  label: z
+    .string()
+    .trim()
+    .min(1, "문구 이름을 입력해 주세요.")
+    .max(50, "문구 이름은 50자 이내로 입력해 주세요."),
+  content: z
+    .string()
+    .trim()
+    .min(1, "문구 내용을 입력해 주세요.")
+    .max(2000, "문구 내용은 2,000자 이내로 입력해 주세요."),
+  scope: z.enum(["personal", "office"], {
+    error: "문구 범위를 선택해 주세요.",
+  }),
+});
+
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+export type SavedPhraseInput = z.infer<typeof savedPhraseSchema>;
+
 /** ZodError에서 사용자에게 보여줄 첫 번째 한국어 메시지를 추출합니다. */
 export function firstZodErrorMessage(error: ZodError): string {
   return error.issues[0]?.message ?? "입력값이 올바르지 않습니다.";

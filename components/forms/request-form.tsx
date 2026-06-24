@@ -27,7 +27,7 @@ const selectClassName = cn(
 );
 
 type ApiResult =
-  | { success: true; data: { id: string; result: string } }
+  | { success: true; data: { id: string; result: string; copyFormats?: boolean } }
   | { success: false; error: string };
 
 export function RequestForm() {
@@ -37,6 +37,7 @@ export function RequestForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [copyFormats, setCopyFormats] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,6 +71,7 @@ export function RequestForm() {
         setError(json.error);
       } else {
         setResult(json.data.result);
+        setCopyFormats(json.data.copyFormats ?? false);
       }
     } catch {
       setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
@@ -157,7 +159,14 @@ export function RequestForm() {
         </CardContent>
       </Card>
 
-      {result && <GeneratedOutput title="자료 요청문" content={result} />}
+      {result && (
+        <GeneratedOutput
+          title="자료 요청문"
+          content={result}
+          copyFormats={copyFormats}
+          emailSubject="자료 요청 안내"
+        />
+      )}
     </div>
   );
 }

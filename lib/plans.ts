@@ -28,7 +28,6 @@ export type Plan = {
 export const FREE_TRIAL = {
   days: 14,
   generationLimit: 30,
-  consultationLimit: 5,
   retentionDays: 14,
 } as const;
 
@@ -43,9 +42,13 @@ export const PLANS: Record<PlanId, Plan> = {
     seats: 1,
     retentionDays: FREE_TRIAL.retentionDays,
     features: [
-      "자료 요청문 생성",
+      "Pro·Team 전체 기능 체험",
+      "자료 요청·재요청문 생성",
+      "상담 요약 + 고객 전달용 정리문",
       "신고 결과 설명문 생성",
-      "상담 메모 요약 5건",
+      "사무소명/담당자명 자동 삽입",
+      "자주 쓰는 문구·공통 템플릿",
+      "카톡/이메일 복사 포맷",
       "14일간 생성 30건",
       "기록 14일 보관",
     ],
@@ -90,6 +93,7 @@ export const PLANS: Record<PlanId, Plan> = {
       "생성 기록 1년 보관",
       "사무소명/담당자명 자동 삽입",
       "자주 쓰는 문구 저장",
+      "카톡/이메일 복사 포맷",
       "우선 이메일 지원",
     ],
     highlight: true,

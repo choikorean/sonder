@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { retentionCutoffIso } from "@/lib/copy-formats";
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
 
@@ -11,6 +12,7 @@ export type RequestHistoryItem = {
   memo: string | null;
   result: string;
   createdAt: string;
+  authorName: string | null;
 };
 
 export type ConsultationHistoryItem = {
@@ -23,6 +25,7 @@ export type ConsultationHistoryItem = {
   transcript: string | null;
   hasAudio: boolean;
   createdAt: string;
+  authorName: string | null;
 };
 
 export type ReportHistoryItem = {
@@ -35,6 +38,7 @@ export type ReportHistoryItem = {
   memo: string | null;
   result: string;
   createdAt: string;
+  authorName: string | null;
 };
 
 export type HistoryData = {
@@ -43,27 +47,43 @@ export type HistoryData = {
   reports: ReportHistoryItem[];
 };
 
-export async function getHistory(supabase: SupabaseServer): Promise<HistoryData> {
+export async function getHistory(
+  supabase: SupabaseServer,
+  options?: { retentionDays?: number; authorName?: string | null },
+): Promise<HistoryData> {
+  const cutoff = retentionCutoffIso(options?.retentionDays ?? 0);
+  const authorName = options?.authorName ?? null;
+
+  let requestsQuery = supabase
+    .from("request_generations")
+    .select("id, tax_type, business_type, memo, result, created_at")
+    .order("created_at", { ascending: false })
+    .limit(LIMIT);
+  let consultationsQuery = supabase
+    .from("consultation_summaries")
+    .select(
+      "id, summary, client_summary, required_documents, next_actions, next_guidance, transcript, audio_url, created_at",
+    )
+    .order("created_at", { ascending: false })
+    .limit(LIMIT);
+  let reportsQuery = supabase
+    .from("report_explanations")
+    .select(
+      "id, tax_type, current_tax, previous_tax, change_reason, due_date, memo, result, created_at",
+    )
+    .order("created_at", { ascending: false })
+    .limit(LIMIT);
+
+  if (cutoff) {
+    requestsQuery = requestsQuery.gte("created_at", cutoff);
+    consultationsQuery = consultationsQuery.gte("created_at", cutoff);
+    reportsQuery = reportsQuery.gte("created_at", cutoff);
+  }
+
   const [requests, consultations, reports] = await Promise.all([
-    supabase
-      .from("request_generations")
-      .select("id, tax_type, business_type, memo, result, created_at")
-      .order("created_at", { ascending: false })
-      .limit(LIMIT),
-    supabase
-      .from("consultation_summaries")
-        .select(
-          "id, summary, client_summary, required_documents, next_actions, next_guidance, transcript, audio_url, created_at",
-        )
-      .order("created_at", { ascending: false })
-      .limit(LIMIT),
-    supabase
-      .from("report_explanations")
-        .select(
-          "id, tax_type, current_tax, previous_tax, change_reason, due_date, memo, result, created_at",
-        )
-      .order("created_at", { ascending: false })
-      .limit(LIMIT),
+    requestsQuery,
+    consultationsQuery,
+    reportsQuery,
   ]);
 
   return {
@@ -74,6 +94,7 @@ export async function getHistory(supabase: SupabaseServer): Promise<HistoryData>
       memo: row.memo,
       result: row.result,
       createdAt: row.created_at,
+      authorName,
     })),
     consultations: (consultations.data ?? []).map((row) => ({
       id: row.id,
@@ -85,6 +106,7 @@ export async function getHistory(supabase: SupabaseServer): Promise<HistoryData>
         transcript: row.transcript,
         hasAudio: row.audio_url != null,
         createdAt: row.created_at,
+        authorName,
       })),
     reports: (reports.data ?? []).map((row) => ({
       id: row.id,
@@ -96,6 +118,7 @@ export async function getHistory(supabase: SupabaseServer): Promise<HistoryData>
         memo: row.memo,
         result: row.result,
         createdAt: row.created_at,
+        authorName,
       })),
   };
 }

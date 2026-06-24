@@ -7,6 +7,7 @@ import {
   firstZodErrorMessage,
 } from "@/lib/validators";
 import { buildConsultationSummaryPrompt } from "@/lib/prompts";
+import type { PromptProfile } from "@/lib/subscriber-context";
 import {
   getOpenAIClient,
   OPENAI_MODEL,
@@ -16,6 +17,8 @@ import {
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { AUDIO_MAX_BYTES, AUDIO_ALLOWED_MIME_TYPES } from "@/lib/constants";
 import { getUsageStatus, recordUsage, usageLimitMessage } from "@/lib/usage";
+import { getSubscriberContext } from "@/lib/subscriber-context";
+import { getPhraseContentsForPrompt } from "@/lib/saved-phrases";
 
 const AUDIO_BUCKET = "consultation-audio";
 
@@ -29,9 +32,17 @@ type SummaryFields = {
 
 async function summarize(
   text: string,
+  options: {
+    profile?: PromptProfile | null;
+    phrases?: string[];
+  },
 ): Promise<{ fields: SummaryFields; tokens: number | null }> {
   const openai = getOpenAIClient();
-  const { system, user } = buildConsultationSummaryPrompt({ text });
+  const { system, user } = buildConsultationSummaryPrompt({
+    text,
+    profile: options.profile,
+    phrases: options.phrases,
+  });
 
   const completion = await openai.chat.completions.create({
     model: OPENAI_MODEL,
@@ -165,8 +176,16 @@ export async function POST(request: NextRequest) {
 
   let fields: SummaryFields;
   let tokensEstimated: number | null = null;
+  const ctx = await getSubscriberContext(supabase);
+  const phrases = await getPhraseContentsForPrompt(
+    supabase,
+    ctx.capabilities,
+  );
   try {
-    const result = await summarize(sourceText);
+    const result = await summarize(sourceText, {
+      profile: ctx.capabilities.officeSignature ? ctx.profile : null,
+      phrases,
+    });
     fields = result.fields;
     tokensEstimated = result.tokens;
     if (!fields.summary || !fields.clientSummary) {
@@ -206,5 +225,6 @@ export async function POST(request: NextRequest) {
     requiredDocuments: fields.requiredDocuments,
     nextActions: fields.nextActions,
     nextGuidance: fields.nextGuidance,
+    copyFormats: ctx.capabilities.copyFormats,
   });
 }

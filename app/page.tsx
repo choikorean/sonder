@@ -586,8 +586,9 @@ export default function Home() {
                 무료 체험 후 결정하세요.
               </h2>
               <p className="mt-3 text-muted-foreground">
-                신용카드 없이 14일 무료 체험으로 먼저 확인하세요. 연 결제 시
-                2개월 무료입니다. (부가세 별도)
+                신용카드 없이 14일 무료 체험으로 먼저 확인하세요. 체험 기간에는
+                생성 30건·기록 14일 보관만 제한되며, Pro·Team 기능을 모두
+                이용할 수 있습니다. 연 결제 시 2개월 무료입니다. (부가세 별도)
               </p>
             </div>
             <div className="mt-12 grid gap-5 lg:grid-cols-3">

@@ -1,7 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import { type Feature } from "@/lib/constants";
-import { getSubscription } from "@/lib/subscription";
 import { type Plan } from "@/lib/plans";
+import { getSubscriberContext } from "@/lib/subscriber-context";
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
 
@@ -61,15 +61,15 @@ export type UsageStatus = {
 export async function getUsageStatus(
   supabase: SupabaseServer,
 ): Promise<UsageStatus> {
-  const sub = await getSubscription(supabase);
-  const limit = sub.plan.monthlyLimit;
+  const ctx = await getSubscriberContext(supabase);
+  const limit = ctx.monthlyLimit;
   const used = await getMonthlyUsageTotal(supabase);
   return {
     used,
     limit,
     remaining: Math.max(0, limit - used),
     allowed: used < limit,
-    plan: sub.plan,
+    plan: ctx.limitPlan,
   };
 }
 

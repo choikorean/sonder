@@ -73,8 +73,8 @@ export function PlanSelector({ currentPlanId, isActive, canStartTrial }: Props) 
             <div>
               <p className="text-sm font-semibold">14일 무료 체험</p>
               <p className="text-sm text-muted-foreground">
-                신용카드 없이 바로 시작하세요. 생성 30건 · 상담 요약 5건을
-                체험할 수 있습니다.
+                신용카드 없이 바로 시작하세요. 14일간 생성 30건까지 Pro·Team
+                전체 기능을 체험할 수 있습니다.
               </p>
             </div>
           </div>

@@ -4,6 +4,7 @@ import {
   type TaxType,
   type BusinessType,
 } from "@/lib/constants";
+import type { PromptProfile } from "@/lib/subscriber-context";
 
 export type PromptMessages = {
   system: string;
@@ -19,13 +20,40 @@ const BASE_RULES = `당신은 한국 세무사 사무소의 문서 작성을 돕
 - 세법 해석이나 최종적인 세무·법률 판단을 제공하지 마세요.
 - 한국어로 작성하고, 정중하고 전문적인 어조를 사용하세요.`;
 
+function profileBlock(profile?: PromptProfile | null): string {
+  if (!profile) return "";
+  const lines: string[] = [];
+  if (profile.officeName?.trim()) {
+    lines.push(`- 사무소명: ${profile.officeName.trim()}`);
+  }
+  if (profile.contactName?.trim()) {
+    lines.push(`- 담당 세무사: ${profile.contactName.trim()}`);
+  }
+  if (profile.phone?.trim()) {
+    lines.push(`- 연락처: ${profile.phone.trim()}`);
+  }
+  if (lines.length === 0) return "";
+  return `\n\n발신자 정보(맺음말 서명에 반영):\n${lines.join("\n")}`;
+}
+
+function phraseBlock(phrases?: string[]): string {
+  if (!phrases?.length) return "";
+  return `\n\n아래 문구 중 맥락에 맞는 표현을 참고해 자연스럽게 활용할 수 있습니다:\n${phrases.map((p) => `- ${p}`).join("\n")}`;
+}
+
 export function buildDocumentRequestPrompt(input: {
   taxType: TaxType;
   businessType: BusinessType;
   memo?: string | null;
+  includeRerequest?: boolean;
+  profile?: PromptProfile | null;
+  phrases?: string[];
 }): PromptMessages {
   const taxLabel = TAX_TYPE_LABELS[input.taxType];
   const businessLabel = BUSINESS_TYPE_LABELS[input.businessType];
+  const rerequestRule = input.includeRerequest
+    ? "- 마지막에는 \"자료 미제출 시 사용할 수 있는 정중한 재요청 문구\"를 별도 섹션(예: [재요청 문구])으로 함께 제시하세요."
+    : "";
 
   const system = `${BASE_RULES}
 
@@ -37,7 +65,8 @@ export function buildDocumentRequestPrompt(input: {
 - 세목과 사업 유형에 일반적으로 필요한 자료를 제시하되, 단정적인 세무 판단은 피하세요.
 - 항목은 번호나 불릿으로 읽기 쉽게 정리하세요.
 - 해당 세목·사업 유형에서 특히 누락되기 쉬운 자료를 별도로 짚어 안내하세요.
-- 마지막에는 "자료 미제출 시 사용할 수 있는 정중한 재요청 문구"를 별도 섹션(예: [재요청 문구])으로 함께 제시하세요.`;
+${rerequestRule}
+- 발신자 정보가 제공된 경우 맺음말에 사무소명·담당자명·연락처를 정중하게 포함하세요.${profileBlock(input.profile)}${phraseBlock(input.phrases)}`;
 
   const user = `다음 조건으로 자료 요청문을 작성해 주세요.
 
@@ -50,6 +79,8 @@ export function buildDocumentRequestPrompt(input: {
 
 export function buildConsultationSummaryPrompt(input: {
   text: string;
+  profile?: PromptProfile | null;
+  phrases?: string[];
 }): PromptMessages {
   const system = `${BASE_RULES}
 
@@ -67,7 +98,8 @@ export function buildConsultationSummaryPrompt(input: {
 지침:
 - 상담 내용에 없는 사실을 추가하지 마세요.
 - 목록형 항목은 줄바꿈으로 구분하세요.
-- nextActions(내부 후속 조치)와 nextGuidance(고객 대상 다음 안내)를 혼동하지 말고 구분해 작성하세요.`;
+- nextActions(내부 후속 조치)와 nextGuidance(고객 대상 다음 안내)를 혼동하지 말고 구분해 작성하세요.
+- clientSummary에는 발신자 정보가 제공된 경우 맺음말에 사무소명·담당자명·연락처를 포함할 수 있습니다.${profileBlock(input.profile)}${phraseBlock(input.phrases)}`;
 
   const user = `다음 상담 내용을 분석해 JSON으로 요약해 주세요.
 
@@ -85,6 +117,8 @@ export function buildTaxExplanationPrompt(input: {
   changeReason?: string | null;
   dueDate?: string | null;
   memo?: string | null;
+  profile?: PromptProfile | null;
+  phrases?: string[];
 }): PromptMessages {
   const taxLabel = TAX_TYPE_LABELS[input.taxType];
 
@@ -97,7 +131,8 @@ export function buildTaxExplanationPrompt(input: {
 - 이번 신고 세액을 안내하고, 이전 세액 정보가 있으면 변동(증가/감소)과 그 사유를 자연스럽게 설명하세요.
 - 제공된 금액과 사유만 사용하고, 수치를 임의로 계산하거나 추정하지 마세요.
 - 납부기한이 제공된 경우 마지막에 납부기한 안내를 포함하세요. 제공되지 않았다면 납부기한을 임의로 만들지 마세요.
-- 카카오톡이나 이메일로 바로 보낼 수 있는 형태로 작성하세요.`;
+- 카카오톡이나 이메일로 바로 보낼 수 있는 형태로 작성하세요.
+- 발신자 정보가 제공된 경우 맺음말에 사무소명·담당자명·연락처를 정중하게 포함하세요.${profileBlock(input.profile)}${phraseBlock(input.phrases)}`;
 
   const lines = [
     `- 세목: ${taxLabel}`,
