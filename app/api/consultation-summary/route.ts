@@ -3,10 +3,16 @@ import { toFile } from "openai";
 
 import { getAuthContext } from "@/lib/auth";
 import {
+  ClientGenerationError,
+  resolveClientForGeneration,
+} from "@/lib/clients";
+import {
   consultationSummarySchema,
+  consultationClientIdSchema,
   firstZodErrorMessage,
 } from "@/lib/validators";
 import { buildConsultationSummaryPrompt } from "@/lib/prompts";
+import type { PromptClient } from "@/lib/prompt-client";
 import type { PromptProfile } from "@/lib/subscriber-context";
 import {
   getOpenAIClient,
@@ -34,6 +40,7 @@ async function summarize(
     fullConsultationOutput: boolean;
     profile?: PromptProfile | null;
     phrases?: string[];
+    client?: PromptClient | null;
   },
 ): Promise<{ fields: ConsultationFields; tokens: number | null }> {
   const openai = getOpenAIClient();
@@ -42,6 +49,7 @@ async function summarize(
     fullConsultationOutput: options.fullConsultationOutput,
     profile: options.profile,
     phrases: options.phrases,
+    client: options.client,
   });
 
   const completion = await openai.chat.completions.create({
@@ -113,6 +121,7 @@ export async function POST(request: NextRequest) {
   let originalText: string | null = null;
   let transcript: string | null = null;
   let audioUrl: string | null = null;
+  let inputClientId: string | undefined;
 
   if (contentType.includes("multipart/form-data")) {
     let formData: FormData;
@@ -121,6 +130,18 @@ export async function POST(request: NextRequest) {
     } catch {
       return errorResponse("요청 형식이 올바르지 않습니다.", 400);
     }
+
+    const clientIdRaw = formData.get("clientId");
+    const clientIdParsed = consultationClientIdSchema.safeParse({
+      clientId:
+        typeof clientIdRaw === "string" && clientIdRaw.trim()
+          ? clientIdRaw.trim()
+          : undefined,
+    });
+    if (!clientIdParsed.success) {
+      return errorResponse(firstZodErrorMessage(clientIdParsed.error), 400);
+    }
+    inputClientId = clientIdParsed.data.clientId ?? undefined;
 
     const audio = formData.get("audio");
     const text = formData.get("text");
@@ -169,7 +190,10 @@ export async function POST(request: NextRequest) {
       }
       sourceText = transcript;
     } else if (typeof text === "string" && text.trim().length > 0) {
-      const parsed = consultationSummarySchema.safeParse({ text });
+      const parsed = consultationSummarySchema.safeParse({
+        text,
+        clientId: inputClientId,
+      });
       if (!parsed.success) {
         return errorResponse(firstZodErrorMessage(parsed.error), 400);
       }
@@ -192,9 +216,29 @@ export async function POST(request: NextRequest) {
     }
     originalText = parsed.data.text;
     sourceText = parsed.data.text;
+    inputClientId = parsed.data.clientId ?? undefined;
   }
 
   const ctx = await getSubscriberContext(supabase);
+
+  let resolvedClientId: string | null = null;
+  let promptClient: PromptClient | null = null;
+  try {
+    const resolved = await resolveClientForGeneration(supabase, {
+      capabilities: ctx.capabilities,
+      subscription: ctx.subscription,
+      organizationId: ctx.organization?.id,
+      clientId: inputClientId,
+    });
+    resolvedClientId = resolved.clientId;
+    promptClient = resolved.client;
+  } catch (err) {
+    if (err instanceof ClientGenerationError) {
+      return errorResponse(err.message, err.status);
+    }
+    throw err;
+  }
+
   const fullOutput = ctx.capabilities.fullConsultationOutput;
   const phrases = await getPhraseContentsForPrompt(supabase, ctx.capabilities, {
     organizationId: ctx.organization?.id,
@@ -207,6 +251,7 @@ export async function POST(request: NextRequest) {
       fullConsultationOutput: fullOutput,
       profile: ctx.capabilities.officeSignature ? ctx.profile : null,
       phrases,
+      client: promptClient,
     });
     fields = result.fields;
     tokensEstimated = result.tokens;
@@ -229,6 +274,7 @@ export async function POST(request: NextRequest) {
       audio_url: audioUrl,
       original_text: originalText,
       transcript,
+      client_id: resolvedClientId,
       ...dbRow,
     })
     .select("id")
@@ -246,6 +292,5 @@ export async function POST(request: NextRequest) {
     id: saved.id,
     transcript,
     ...responseFields,
-    copyFormats: ctx.capabilities.copyFormats,
   });
 }

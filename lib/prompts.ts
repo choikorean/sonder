@@ -4,6 +4,7 @@ import {
   type TaxType,
   type BusinessType,
 } from "@/lib/constants";
+import type { PromptClient } from "@/lib/prompt-client";
 import type { PromptProfile } from "@/lib/subscriber-context";
 import { getDocumentRequestDates } from "@/lib/document-request-dates";
 
@@ -47,6 +48,28 @@ function phraseBlock(phrases?: string[]): string {
   return `\n\n아래 문구 중 맥락에 맞는 표현을 참고해 자연스럽게 활용할 수 있습니다:\n${phrases.map((p) => `- ${p}`).join("\n")}`;
 }
 
+function clientBlock(client?: PromptClient | null): string {
+  if (!client?.name?.trim()) return "";
+  const lines = [`- 고객명(상호): ${client.name.trim()}`];
+  if (client.contactName?.trim()) {
+    lines.push(`- 담당자: ${client.contactName.trim()}`);
+  }
+  if (client.businessType) {
+    lines.push(`- 사업 유형: ${BUSINESS_TYPE_LABELS[client.businessType]}`);
+  }
+  if (client.memo?.trim()) {
+    lines.push(
+      `- 고객 관련 메모(제공된 사실만 활용): ${client.memo.trim()}`,
+    );
+  }
+  return `\n\n수신 고객 정보(인사말·호칭에 반드시 반영, 없는 정보는 추측하지 마세요):\n${lines.join("\n")}`;
+}
+
+function clientRule(client?: PromptClient | null): string {
+  if (!client) return "";
+  return "- 수신 고객 정보가 제공된 경우 인사말에서 고객명(상호)을 정확히 사용하세요. 담당자명이 있으면 적절히 호칭하세요. 고객 관련 메모는 제공된 내용만 반영하세요.";
+}
+
 export function buildDocumentRequestPrompt(input: {
   taxType: TaxType;
   businessType: BusinessType;
@@ -54,6 +77,7 @@ export function buildDocumentRequestPrompt(input: {
   includeRerequest?: boolean;
   profile?: PromptProfile | null;
   phrases?: string[];
+  client?: PromptClient | null;
   requestDate?: string;
   submissionDeadline?: string;
 }): PromptMessages {
@@ -72,6 +96,8 @@ export function buildDocumentRequestPrompt(input: {
     ? "- 발신자 정보가 제공된 경우 사무소명·담당자명·연락처를 본문과 맺음말에 정확히 반영하세요. 다른 이름이나 사무소명을 임의로 만들지 마세요."
     : "";
 
+  const clientRuleText = clientRule(input.client);
+
   const system = `${BASE_RULES}
 
 작업: 세무사 사무소가 거래처(고객)에게 보내는 "자료 요청문"을 작성합니다.
@@ -86,7 +112,8 @@ export function buildDocumentRequestPrompt(input: {
 - 안내 기준일은 문서 작성일이며, 자료 제출 기한은 그 이후 날짜입니다. 과거 일자로 안내하지 마세요.
 - 신고기한·과세기간·제출마감일 등 구체적 과거 날짜는 사용자가 제공하지 않았다면 임의로 적지 마세요.
 ${rerequestRule}
-${profileRule}${profileBlock(input.profile)}${phraseBlock(input.phrases)}`;
+${profileRule}
+${clientRuleText}${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}`;
 
   const user = `다음 조건으로 자료 요청문을 작성해 주세요.
 
@@ -104,6 +131,7 @@ export function buildConsultationSummaryPrompt(input: {
   fullConsultationOutput?: boolean;
   profile?: PromptProfile | null;
   phrases?: string[];
+  client?: PromptClient | null;
 }): PromptMessages {
   const full = input.fullConsultationOutput !== false;
 
@@ -122,7 +150,8 @@ export function buildConsultationSummaryPrompt(input: {
 
   const fullGuidance = full
     ? `- nextActions(내부 후속 조치)와 nextGuidance(고객 대상 다음 안내)를 혼동하지 말고 구분해 작성하세요.
-- clientSummary에는 발신자 정보가 제공된 경우 맺음말에 사무소명·담당자명·연락처를 포함할 수 있습니다.`
+- clientSummary에는 발신자 정보가 제공된 경우 맺음말에 사무소명·담당자명·연락처를 포함할 수 있습니다.
+${clientRule(input.client)}`
     : `- Starter 플랜: 세무사 내부용 요약과 내부 후속 조치만 작성하세요. 고객 전달용 문구는 작성하지 마세요.`;
 
   const system = `${BASE_RULES}
@@ -136,7 +165,7 @@ ${jsonSchema}
 - 상담 내용에 없는 사실을 추가하지 마세요.
 - 목록형 항목은 줄바꿈으로 구분하세요.
 ${fullGuidance}
-- 모든 JSON 문자열 값은 마크다운 없이 일반 텍스트만 사용하세요.${profileBlock(input.profile)}${phraseBlock(input.phrases)}`;
+- 모든 JSON 문자열 값은 마크다운 없이 일반 텍스트만 사용하세요.${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}`;
 
   const user = `다음 상담 내용을 분석해 JSON으로 요약해 주세요.
 
@@ -156,6 +185,7 @@ export function buildTaxExplanationPrompt(input: {
   memo?: string | null;
   profile?: PromptProfile | null;
   phrases?: string[];
+  client?: PromptClient | null;
 }): PromptMessages {
   const taxLabel = TAX_TYPE_LABELS[input.taxType];
 
@@ -169,7 +199,8 @@ export function buildTaxExplanationPrompt(input: {
 - 제공된 금액과 사유만 사용하고, 수치를 임의로 계산하거나 추정하지 마세요.
 - 납부기한이 제공된 경우 마지막에 납부기한 안내를 포함하세요. 제공되지 않았다면 납부기한을 임의로 만들지 마세요.
 - 카카오톡이나 이메일로 바로 보낼 수 있는 형태로 작성하세요.
-- 발신자 정보가 제공된 경우 맺음말에 사무소명·담당자명·연락처를 정중하게 포함하세요.${profileBlock(input.profile)}${phraseBlock(input.phrases)}`;
+- 발신자 정보가 제공된 경우 맺음말에 사무소명·담당자명·연락처를 정중하게 포함하세요.
+${clientRule(input.client)}${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}`;
 
   const lines = [
     `- 세목: ${taxLabel}`,

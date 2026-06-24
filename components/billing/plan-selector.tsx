@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { StarterPlanNotice } from "@/components/billing/starter-plan-notice";
 import { cn } from "@/lib/utils";
 import {
   PLANS,
@@ -74,7 +75,7 @@ export function PlanSelector({ currentPlanId, isActive, canStartTrial }: Props) 
               <p className="text-sm font-semibold">14일 무료 체험</p>
               <p className="text-sm text-muted-foreground">
                 신용카드 없이 바로 시작하세요. 14일간 생성 30건까지 Pro·Team
-                전체 기능을 체험할 수 있습니다.
+                전체 기능(고객 등록 포함)을 체험할 수 있습니다.
               </p>
             </div>
           </div>
@@ -154,6 +155,8 @@ export function PlanSelector({ currentPlanId, isActive, canStartTrial }: Props) 
                   </li>
                 ))}
               </ul>
+
+              {plan.id === "starter" && <StarterPlanNotice />}
 
               <Button
                 onClick={() => checkout(plan.id)}

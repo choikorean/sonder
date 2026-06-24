@@ -31,6 +31,20 @@ export const FREE_TRIAL = {
   retentionDays: 14,
 } as const;
 
+/** Pro·Team 고객(CRM) 등록 한도 */
+export const CLIENT_LIMITS = {
+  pro: 20,
+  team: 200,
+} as const;
+
+/** Starter로 전환 시 이용할 수 없는 기능 (안내용) */
+export const STARTER_UNAVAILABLE_FEATURES = [
+  "고객 등록·고객별 이력",
+  "상담 요약 + 고객 전달용 정리문",
+  "사무소명/담당자명 자동 삽입",
+  "자주 쓰는 문구 저장",
+] as const;
+
 /**
  * 플랜별 마케팅 기능 목록(features)은 lib/plan-capabilities.ts의
  * PlanCapabilities 및 monthlyLimit / retentionDays / seats와 1:1 대응합니다.
@@ -53,7 +67,7 @@ export const PLANS: Record<PlanId, Plan> = {
       "신고 결과 설명문 생성",
       "사무소명/담당자명 자동 삽입",
       "자주 쓰는 문구·공통 템플릿",
-      "카톡/이메일 복사 포맷",
+      "고객 등록 (체험, Pro 20명 수준)",
       "14일간 생성 30건",
       "기록 14일 보관",
     ],
@@ -77,6 +91,7 @@ export const PLANS: Record<PlanId, Plan> = {
       "월 100건 생성",
       "생성 기록 30일 보관",
       "1인 계정",
+      "고객 등록·고객별 이력 미포함",
     ],
     highlight: false,
     purchasable: true,
@@ -98,8 +113,7 @@ export const PLANS: Record<PlanId, Plan> = {
       "생성 기록 1년 보관",
       "사무소명/담당자명 자동 삽입",
       "자주 쓰는 문구 저장",
-      "카톡/이메일 복사 포맷",
-      "우선 이메일 지원",
+      "고객 등록·고객별 이력 (최대 20명)",
     ],
     highlight: true,
     badge: "가장 많이 선택",
@@ -121,7 +135,7 @@ export const PLANS: Record<PlanId, Plan> = {
       "사용자별 생성 이력",
       "사무소 공통 템플릿",
       "대표 검토용 결과 정리",
-      "우선 지원 + 온보딩 30분",
+      "고객 등록·고객별 이력 (사무소 공유 200명)",
     ],
     highlight: false,
     purchasable: true,

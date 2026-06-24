@@ -1,6 +1,11 @@
 import { type NextRequest } from "next/server";
 
 import { getAuthContext } from "@/lib/auth";
+import {
+  ClientGenerationError,
+  mergeGenerationMemo,
+  resolveClientForGeneration,
+} from "@/lib/clients";
 import { requestGenerateSchema, firstZodErrorMessage } from "@/lib/validators";
 import { buildDocumentRequestPrompt } from "@/lib/prompts";
 import {
@@ -32,7 +37,7 @@ export async function POST(request: NextRequest) {
     return errorResponse(firstZodErrorMessage(parsed.error), 400);
   }
 
-  const { taxType, businessType, memo } = parsed.data;
+  const { taxType, businessType, memo, clientId: inputClientId } = parsed.data;
 
   const usage = await getUsageStatus(supabase);
   if (!usage.allowed) {
@@ -40,6 +45,26 @@ export async function POST(request: NextRequest) {
   }
 
   const ctx = await getSubscriberContext(supabase);
+
+  let resolvedClientId: string | null = null;
+  let promptClient = null;
+  try {
+    const resolved = await resolveClientForGeneration(supabase, {
+      capabilities: ctx.capabilities,
+      subscription: ctx.subscription,
+      organizationId: ctx.organization?.id,
+      clientId: inputClientId,
+    });
+    resolvedClientId = resolved.clientId;
+    promptClient = resolved.client;
+  } catch (err) {
+    if (err instanceof ClientGenerationError) {
+      return errorResponse(err.message, err.status);
+    }
+    throw err;
+  }
+
+  const effectiveMemo = mergeGenerationMemo(memo, promptClient?.memo);
   const phrases = await getPhraseContentsForPrompt(supabase, ctx.capabilities, {
     organizationId: ctx.organization?.id,
   });
@@ -51,10 +76,11 @@ export async function POST(request: NextRequest) {
     const { system, user: userPrompt } = buildDocumentRequestPrompt({
       taxType,
       businessType,
-      memo,
+      memo: effectiveMemo,
       includeRerequest: ctx.capabilities.rerequestSection,
       profile: ctx.capabilities.officeSignature ? ctx.profile : null,
       phrases,
+      client: promptClient,
     });
 
     const completion = await openai.chat.completions.create({
@@ -83,7 +109,8 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       tax_type: taxType,
       business_type: businessType,
-      memo: memo ?? null,
+      memo: effectiveMemo,
+      client_id: resolvedClientId,
       result,
     })
     .select("id")
@@ -98,6 +125,5 @@ export async function POST(request: NextRequest) {
   return successResponse({
     id: saved.id,
     result,
-    copyFormats: ctx.capabilities.copyFormats,
   });
 }

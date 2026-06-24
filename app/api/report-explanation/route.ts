@@ -2,6 +2,11 @@ import { type NextRequest } from "next/server";
 
 import { getAuthContext } from "@/lib/auth";
 import {
+  ClientGenerationError,
+  mergeGenerationMemo,
+  resolveClientForGeneration,
+} from "@/lib/clients";
+import {
   reportExplanationSchema,
   firstZodErrorMessage,
 } from "@/lib/validators";
@@ -35,7 +40,7 @@ export async function POST(request: NextRequest) {
     return errorResponse(firstZodErrorMessage(parsed.error), 400);
   }
 
-  const { taxType, currentTax, previousTax, changeReason, dueDate, memo } =
+  const { taxType, currentTax, previousTax, changeReason, dueDate, memo, clientId: inputClientId } =
     parsed.data;
 
   const usage = await getUsageStatus(supabase);
@@ -44,6 +49,26 @@ export async function POST(request: NextRequest) {
   }
 
   const ctx = await getSubscriberContext(supabase);
+
+  let resolvedClientId: string | null = null;
+  let promptClient = null;
+  try {
+    const resolved = await resolveClientForGeneration(supabase, {
+      capabilities: ctx.capabilities,
+      subscription: ctx.subscription,
+      organizationId: ctx.organization?.id,
+      clientId: inputClientId,
+    });
+    resolvedClientId = resolved.clientId;
+    promptClient = resolved.client;
+  } catch (err) {
+    if (err instanceof ClientGenerationError) {
+      return errorResponse(err.message, err.status);
+    }
+    throw err;
+  }
+
+  const effectiveMemo = mergeGenerationMemo(memo, promptClient?.memo);
   const phrases = await getPhraseContentsForPrompt(supabase, ctx.capabilities, {
     organizationId: ctx.organization?.id,
   });
@@ -58,9 +83,10 @@ export async function POST(request: NextRequest) {
       previousTax,
       changeReason,
       dueDate,
-      memo,
+      memo: effectiveMemo,
       profile: ctx.capabilities.officeSignature ? ctx.profile : null,
       phrases,
+      client: promptClient,
     });
 
     const completion = await openai.chat.completions.create({
@@ -92,7 +118,8 @@ export async function POST(request: NextRequest) {
       previous_tax: previousTax ?? null,
       change_reason: changeReason ?? null,
       due_date: dueDate ?? null,
-      memo: memo ?? null,
+      memo: effectiveMemo,
+      client_id: resolvedClientId,
       result,
     })
     .select("id")
@@ -107,6 +134,5 @@ export async function POST(request: NextRequest) {
   return successResponse({
     id: saved.id,
     result,
-    copyFormats: ctx.capabilities.copyFormats,
   });
 }

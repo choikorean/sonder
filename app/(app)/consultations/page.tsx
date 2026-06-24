@@ -6,7 +6,12 @@ export const metadata = {
   title: "상담 요약",
 };
 
-export default async function ConsultationsPage() {
+export default async function ConsultationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ clientId?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
   const ctx = await getSubscriberContext(supabase);
   const fullOutput = ctx.capabilities.fullConsultationOutput;
@@ -21,7 +26,11 @@ export default async function ConsultationsPage() {
             : "상담 메모나 녹음 파일을 입력하면 세무사 내부용 요약과 후속 조치를 정리해 드립니다."}
         </p>
       </div>
-      <ConsultationForm fullConsultationOutput={fullOutput} />
+      <ConsultationForm
+        fullConsultationOutput={fullOutput}
+        canSelectClient={ctx.capabilities.clientProfiles}
+        initialClientId={params.clientId ?? null}
+      />
     </div>
   );
 }

@@ -5,9 +5,11 @@ import {
   Receipt,
   History,
   Inbox,
+  Users,
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { getSubscriberContext } from "@/lib/subscriber-context";
 import {
   Card,
   CardDescription,
@@ -15,10 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/empty-state";
-import { PrioritySupportCard } from "@/components/support/priority-support-card";
 import { TAX_TYPE_LABELS, FEATURE_LABELS, type TaxType } from "@/lib/constants";
-import { getSubscriberContext } from "@/lib/subscriber-context";
-import { getSupportConfig, getSupportTier } from "@/lib/support";
 import { getUsageStatus, getMonthlyUsageByFeature } from "@/lib/usage";
 
 export const metadata = {
@@ -57,6 +56,7 @@ type RecentItem = {
   label: string;
   href: string;
   createdAt: string;
+  clientName: string | null;
 };
 
 function taxLabel(value: string) {
@@ -78,40 +78,86 @@ async function getRecentItems(): Promise<RecentItem[]> {
   const [requests, consultations, reports] = await Promise.all([
     supabase
       .from("request_generations")
-      .select("id, tax_type, created_at")
+      .select("id, tax_type, created_at, client_id")
       .order("created_at", { ascending: false })
       .limit(5),
     supabase
       .from("consultation_summaries")
-      .select("id, created_at")
+      .select("id, created_at, client_id")
       .order("created_at", { ascending: false })
       .limit(5),
     supabase
       .from("report_explanations")
-      .select("id, tax_type, created_at")
+      .select("id, tax_type, created_at, client_id")
       .order("created_at", { ascending: false })
       .limit(5),
   ]);
 
+  const clientIds = [
+    ...(requests.data ?? []).map((row) => row.client_id),
+    ...(consultations.data ?? []).map((row) => row.client_id),
+    ...(reports.data ?? []).map((row) => row.client_id),
+  ].filter((id): id is string => id != null);
+
+  const clientNameMap = new Map<string, string>();
+  if (clientIds.length > 0) {
+    const { data: clients } = await supabase
+      .from("clients")
+      .select("id, name")
+      .in("id", [...new Set(clientIds)]);
+
+    for (const client of clients ?? []) {
+      clientNameMap.set(client.id, client.name);
+    }
+  }
+
   const items: RecentItem[] = [
-    ...(requests.data ?? []).map((row) => ({
-      id: row.id,
-      label: `자료 요청 · ${taxLabel(row.tax_type)}`,
-      href: "/history",
-      createdAt: row.created_at,
-    })),
-    ...(consultations.data ?? []).map((row) => ({
-      id: row.id,
-      label: "상담 요약",
-      href: "/history",
-      createdAt: row.created_at,
-    })),
-    ...(reports.data ?? []).map((row) => ({
-      id: row.id,
-      label: `신고 결과 설명문 · ${taxLabel(row.tax_type)}`,
-      href: "/history",
-      createdAt: row.created_at,
-    })),
+    ...(requests.data ?? []).map((row) => {
+      const clientName = row.client_id
+        ? (clientNameMap.get(row.client_id) ?? null)
+        : null;
+      return {
+        id: row.id,
+        label: clientName
+          ? `자료 요청 · ${taxLabel(row.tax_type)} · ${clientName}`
+          : `자료 요청 · ${taxLabel(row.tax_type)}`,
+        href: row.client_id
+          ? `/history?clientId=${row.client_id}`
+          : "/history",
+        createdAt: row.created_at,
+        clientName,
+      };
+    }),
+    ...(consultations.data ?? []).map((row) => {
+      const clientName = row.client_id
+        ? (clientNameMap.get(row.client_id) ?? null)
+        : null;
+      return {
+        id: row.id,
+        label: clientName ? `상담 요약 · ${clientName}` : "상담 요약",
+        href: row.client_id
+          ? `/history?clientId=${row.client_id}`
+          : "/history",
+        createdAt: row.created_at,
+        clientName,
+      };
+    }),
+    ...(reports.data ?? []).map((row) => {
+      const clientName = row.client_id
+        ? (clientNameMap.get(row.client_id) ?? null)
+        : null;
+      return {
+        id: row.id,
+        label: clientName
+          ? `신고 결과 설명문 · ${taxLabel(row.tax_type)} · ${clientName}`
+          : `신고 결과 설명문 · ${taxLabel(row.tax_type)}`,
+        href: row.client_id
+          ? `/history?clientId=${row.client_id}`
+          : "/history",
+        createdAt: row.created_at,
+        clientName,
+      };
+    }),
   ];
 
   return items
@@ -130,18 +176,26 @@ const FEATURE_ORDER = [
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const [recentItems, usage, byFeature, ctx] = await Promise.all([
+  const ctx = await getSubscriberContext(supabase);
+  const [recentItems, usage, byFeature] = await Promise.all([
     getRecentItems(),
     getUsageStatus(supabase),
     getMonthlyUsageByFeature(supabase),
-    getSubscriberContext(supabase),
   ]);
-  const support = getSupportConfig();
-  const supportTier = getSupportTier({
-    prioritySupport: ctx.capabilities.prioritySupport,
-    planId: ctx.subscription.planId,
-    isTrialing: ctx.subscription.isTrialing,
-  });
+
+  const featureCards = [
+    ...FEATURES,
+    ...(ctx.capabilities.clientProfiles
+      ? [
+          {
+            href: "/settings/clients",
+            title: "고객 관리",
+            description: "거래처를 등록하고 생성·이력을 연결합니다.",
+            icon: Users,
+          },
+        ]
+      : []),
+  ];
 
   const percent =
     usage.limit > 0
@@ -204,7 +258,7 @@ export default async function DashboardPage() {
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2">
-        {FEATURES.map((feature) => {
+        {featureCards.map((feature) => {
           const Icon = feature.icon;
           return (
             <Link key={feature.href} href={feature.href} className="group">
@@ -261,18 +315,6 @@ export default async function DashboardPage() {
           </Card>
         )}
       </section>
-
-      {supportTier !== "none" && (
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">고객 지원</h2>
-          <PrioritySupportCard
-            tier={supportTier}
-            priorityEmail={support.priorityEmail}
-            teamOnboardingUrl={support.teamOnboardingUrl}
-            compact
-          />
-        </section>
-      )}
     </div>
   );
 }

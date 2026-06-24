@@ -13,6 +13,8 @@ export type RequestHistoryItem = {
   result: string;
   createdAt: string;
   authorName: string | null;
+  clientId: string | null;
+  clientName: string | null;
 };
 
 export type ConsultationHistoryItem = {
@@ -26,6 +28,8 @@ export type ConsultationHistoryItem = {
   hasAudio: boolean;
   createdAt: string;
   authorName: string | null;
+  clientId: string | null;
+  clientName: string | null;
 };
 
 export type ReportHistoryItem = {
@@ -39,6 +43,8 @@ export type ReportHistoryItem = {
   result: string;
   createdAt: string;
   authorName: string | null;
+  clientId: string | null;
+  clientName: string | null;
 };
 
 export type HistoryData = {
@@ -75,32 +81,59 @@ async function loadAuthorNameMap(
   );
 }
 
+async function loadClientNameMap(
+  supabase: SupabaseServer,
+  clientIds: string[],
+): Promise<Map<string, string>> {
+  const uniqueIds = [...new Set(clientIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return new Map();
+
+  const { data } = await supabase
+    .from("clients")
+    .select("id, name")
+    .in("id", uniqueIds);
+
+  return new Map((data ?? []).map((client) => [client.id, client.name]));
+}
+
 export async function getHistory(
   supabase: SupabaseServer,
-  options?: { retentionDays?: number; authorName?: string | null },
+  options?: {
+    retentionDays?: number;
+    authorName?: string | null;
+    clientId?: string | null;
+  },
 ): Promise<HistoryData> {
   const cutoff = retentionCutoffIso(options?.retentionDays ?? 0);
   const fallbackAuthorName = options?.authorName ?? null;
 
   let requestsQuery = supabase
     .from("request_generations")
-    .select("id, user_id, tax_type, business_type, memo, result, created_at")
+    .select(
+      "id, user_id, tax_type, business_type, memo, result, created_at, client_id",
+    )
     .order("created_at", { ascending: false })
     .limit(LIMIT);
   let consultationsQuery = supabase
     .from("consultation_summaries")
     .select(
-      "id, user_id, summary, client_summary, required_documents, next_actions, next_guidance, transcript, audio_url, created_at",
+      "id, user_id, summary, client_summary, required_documents, next_actions, next_guidance, transcript, audio_url, created_at, client_id",
     )
     .order("created_at", { ascending: false })
     .limit(LIMIT);
   let reportsQuery = supabase
     .from("report_explanations")
     .select(
-      "id, user_id, tax_type, current_tax, previous_tax, change_reason, due_date, memo, result, created_at",
+      "id, user_id, tax_type, current_tax, previous_tax, change_reason, due_date, memo, result, created_at, client_id",
     )
     .order("created_at", { ascending: false })
     .limit(LIMIT);
+
+  if (options?.clientId) {
+    requestsQuery = requestsQuery.eq("client_id", options.clientId);
+    consultationsQuery = consultationsQuery.eq("client_id", options.clientId);
+    reportsQuery = reportsQuery.eq("client_id", options.clientId);
+  }
 
   if (cutoff) {
     requestsQuery = requestsQuery.gte("created_at", cutoff);
@@ -119,7 +152,18 @@ export async function getHistory(
     ...(consultations.data ?? []).map((row) => row.user_id),
     ...(reports.data ?? []).map((row) => row.user_id),
   ];
-  const authorNames = await loadAuthorNameMap(supabase, userIds);
+  const clientIds = [
+    ...(requests.data ?? []).map((row) => row.client_id),
+    ...(consultations.data ?? []).map((row) => row.client_id),
+    ...(reports.data ?? []).map((row) => row.client_id),
+  ];
+  const [authorNames, clientNames] = await Promise.all([
+    loadAuthorNameMap(supabase, userIds),
+    loadClientNameMap(
+      supabase,
+      clientIds.filter((id): id is string => id != null),
+    ),
+  ]);
 
   return {
     requests: (requests.data ?? []).map((row) => ({
@@ -129,8 +173,9 @@ export async function getHistory(
       memo: row.memo,
       result: row.result,
       createdAt: row.created_at,
-      authorName:
-        authorNames.get(row.user_id) ?? fallbackAuthorName,
+      authorName: authorNames.get(row.user_id) ?? fallbackAuthorName,
+      clientId: row.client_id,
+      clientName: row.client_id ? (clientNames.get(row.client_id) ?? null) : null,
     })),
     consultations: (consultations.data ?? []).map((row) => ({
       id: row.id,
@@ -142,8 +187,9 @@ export async function getHistory(
       transcript: row.transcript,
       hasAudio: row.audio_url != null,
       createdAt: row.created_at,
-      authorName:
-        authorNames.get(row.user_id) ?? fallbackAuthorName,
+      authorName: authorNames.get(row.user_id) ?? fallbackAuthorName,
+      clientId: row.client_id,
+      clientName: row.client_id ? (clientNames.get(row.client_id) ?? null) : null,
     })),
     reports: (reports.data ?? []).map((row) => ({
       id: row.id,
@@ -155,8 +201,9 @@ export async function getHistory(
       memo: row.memo,
       result: row.result,
       createdAt: row.created_at,
-      authorName:
-        authorNames.get(row.user_id) ?? fallbackAuthorName,
+      authorName: authorNames.get(row.user_id) ?? fallbackAuthorName,
+      clientId: row.client_id,
+      clientName: row.client_id ? (clientNames.get(row.client_id) ?? null) : null,
     })),
   };
 }

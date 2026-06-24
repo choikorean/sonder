@@ -1,6 +1,5 @@
 import type { HistoryData } from "@/lib/history";
 import { TAX_TYPE_LABELS, type TaxType } from "@/lib/constants";
-import { toPlainClientText } from "@/lib/plain-text";
 
 function taxLabel(value: string) {
   return TAX_TYPE_LABELS[value as TaxType] ?? value;
@@ -66,14 +65,6 @@ export function buildReviewSummary(
 
   lines.push("", "※ AI가 생성한 초안입니다. 발송 전 세무사가 반드시 검토해야 합니다.");
   return lines.join("\n");
-}
-
-export function formatForKakao(text: string): string {
-  return toPlainClientText(text);
-}
-
-export function formatForEmail(text: string, subject = "안내드립니다"): string {
-  return `제목: ${subject}\n\n${toPlainClientText(text)}`;
 }
 
 export function retentionCutoffIso(retentionDays: number): string | null {

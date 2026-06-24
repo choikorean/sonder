@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { LoadingButton } from "@/components/loading-button";
-import { CopyFormatActions } from "@/components/copy-format-actions";
 import { CopyButton } from "@/components/copy-button";
 import { ReviewDisclaimer } from "@/components/review-disclaimer";
 import { Label } from "@/components/ui/label";
@@ -18,6 +17,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toPlainClientText } from "@/lib/plain-text";
+import {
+  ClientSelect,
+} from "@/components/clients/client-select";
 
 type SummaryData = {
   transcript: string | null;
@@ -29,19 +31,15 @@ type SummaryData = {
 };
 
 type ApiResult =
-  | { success: true; data: SummaryData & { id: string; copyFormats?: boolean } }
+  | { success: true; data: SummaryData & { id: string } }
   | { success: false; error: string };
 
 function OutputSection({
   title,
   value,
-  copyFormats = false,
-  emailSubject,
 }: {
   title: string;
   value: string;
-  copyFormats?: boolean;
-  emailSubject?: string;
 }) {
   const content = toPlainClientText(value.trim());
   return (
@@ -50,11 +48,7 @@ function OutputSection({
         <CardTitle className="text-base">{title}</CardTitle>
         {content && (
           <CardAction>
-            <CopyFormatActions
-              text={content}
-              copyFormats={copyFormats}
-              emailSubject={emailSubject}
-            />
+            <CopyButton text={content} />
           </CardAction>
         )}
       </CardHeader>
@@ -73,15 +67,19 @@ function OutputSection({
 
 export function ConsultationForm({
   fullConsultationOutput,
+  canSelectClient,
+  initialClientId = null,
 }: {
   fullConsultationOutput: boolean;
+  canSelectClient: boolean;
+  initialClientId?: string | null;
 }) {
   const [text, setText] = useState("");
+  const [clientId, setClientId] = useState<string | null>(initialClientId);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<SummaryData | null>(null);
-  const [copyFormats, setCopyFormats] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -101,6 +99,7 @@ export function ConsultationForm({
         const formData = new FormData();
         formData.append("audio", file);
         if (text.trim()) formData.append("text", text.trim());
+        if (clientId) formData.append("clientId", clientId);
         res = await fetch("/api/consultation-summary", {
           method: "POST",
           body: formData,
@@ -109,7 +108,10 @@ export function ConsultationForm({
         res = await fetch("/api/consultation-summary", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: text.trim() }),
+          body: JSON.stringify({
+            text: text.trim(),
+            clientId: clientId ?? undefined,
+          }),
         });
       }
 
@@ -118,7 +120,6 @@ export function ConsultationForm({
         setError(json.error);
       } else {
         setData(json.data);
-        setCopyFormats(json.data.copyFormats ?? false);
       }
     } catch {
       setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
@@ -135,6 +136,13 @@ export function ConsultationForm({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <ClientSelect
+              value={clientId}
+              onChange={(nextId) => setClientId(nextId)}
+              disabled={loading}
+              canSelectClient={canSelectClient}
+            />
+
             <div className="space-y-2">
               <Label htmlFor="text">상담 메모</Label>
               <Textarea
@@ -198,21 +206,15 @@ export function ConsultationForm({
               <OutputSection
                 title="고객 전달용 정리문"
                 value={data.clientSummary}
-                copyFormats={copyFormats}
-                emailSubject="상담 내용 정리"
               />
               <OutputSection
                 title="추가로 받아야 할 자료"
                 value={data.requiredDocuments}
-                copyFormats={copyFormats}
-                emailSubject="추가 자료 요청"
               />
               <OutputSection title="내부 후속 조치" value={data.nextActions} />
               <OutputSection
                 title="다음 안내 사항"
                 value={data.nextGuidance}
-                copyFormats={copyFormats}
-                emailSubject="다음 안내"
               />
             </>
           ) : (

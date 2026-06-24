@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import {
+  AUTH_CALLBACK_ERROR_MESSAGE,
+  getAuthErrorMessage,
+  translateAuthError,
+} from "@/lib/auth-errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,30 +20,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-type Mode = "login" | "signup";
+type Mode = "login" | "signup" | "reset-request";
 
-function translateAuthError(message: string): string {
-  const m = message.toLowerCase();
-  if (m.includes("invalid login credentials")) {
-    return "이메일 또는 비밀번호가 올바르지 않습니다.";
-  }
-  if (m.includes("already registered") || m.includes("already been registered")) {
-    return "이미 가입된 이메일입니다.";
-  }
-  if (m.includes("password should be at least")) {
-    return "비밀번호는 6자 이상이어야 합니다.";
-  }
-  if (m.includes("email not confirmed")) {
-    return "이메일 인증이 필요합니다. 메일함을 확인해 주세요.";
-  }
-  if (m.includes("unable to validate email")) {
-    return "이메일 형식이 올바르지 않습니다.";
-  }
-  return "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+function getPasswordResetRedirectUrl() {
+  return `${window.location.origin}/auth/callback?next=/login/reset-password`;
 }
 
 export function AuthForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,6 +36,12 @@ export function AuthForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("error") === "auth_callback") {
+      setError(AUTH_CALLBACK_ERROR_MESSAGE);
+    }
+  }, [searchParams]);
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -62,13 +58,26 @@ export function AuthForm() {
     const supabase = createClient();
 
     try {
+      if (mode === "reset-request") {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+          email,
+          { redirectTo: getPasswordResetRedirectUrl() },
+        );
+        if (resetError) throw resetError;
+
+        setMessage(
+          "비밀번호 재설정 링크를 이메일로 보냈습니다. 메일함을 확인해 주세요.",
+        );
+        return;
+      }
+
       if (mode === "signup") {
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { name },
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
           },
         });
         if (signUpError) throw signUpError;
@@ -96,24 +105,38 @@ export function AuthForm() {
         router.refresh();
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      setError(translateAuthError(msg));
+      setError(translateAuthError(getAuthErrorMessage(err)));
     } finally {
       setLoading(false);
     }
   }
 
+  const title =
+    mode === "login"
+      ? "로그인"
+      : mode === "signup"
+        ? "회원가입"
+        : "비밀번호 재설정";
+
+  const description =
+    mode === "login"
+      ? "TaxFlo 계정으로 로그인하세요."
+      : mode === "signup"
+        ? "세무사 업무 자동화를 지금 시작하세요."
+        : "가입한 이메일을 입력하시면 재설정 링크를 보내드립니다.";
+
+  const submitLabel =
+    mode === "login"
+      ? "로그인"
+      : mode === "signup"
+        ? "회원가입"
+        : "재설정 링크 보내기";
+
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">
-          {mode === "login" ? "로그인" : "회원가입"}
-        </CardTitle>
-        <CardDescription>
-          {mode === "login"
-            ? "TaxFlo 계정으로 로그인하세요."
-            : "세무사 업무 자동화를 지금 시작하세요."}
-        </CardDescription>
+        <CardTitle className="text-2xl">{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -144,19 +167,34 @@ export function AuthForm() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">비밀번호</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="6자 이상"
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-              minLength={6}
-              required
-            />
-          </div>
+          {mode !== "reset-request" && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="password">비밀번호</Label>
+                {mode === "login" && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode("reset-request")}
+                    className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    비밀번호를 잊으셨나요?
+                  </button>
+                )}
+              </div>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="6자 이상"
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
+                }
+                minLength={6}
+                required
+              />
+            </div>
+          )}
 
           {error && (
             <p className="text-sm text-destructive" role="alert">
@@ -170,16 +208,12 @@ export function AuthForm() {
           )}
 
           <Button type="submit" className="w-full" size="lg" disabled={loading}>
-            {loading
-              ? "처리 중..."
-              : mode === "login"
-                ? "로그인"
-                : "회원가입"}
+            {loading ? "처리 중..." : submitLabel}
           </Button>
         </form>
 
         <div className="mt-4 text-center text-sm text-muted-foreground">
-          {mode === "login" ? (
+          {mode === "login" && (
             <>
               아직 계정이 없으신가요?{" "}
               <button
@@ -190,9 +224,22 @@ export function AuthForm() {
                 회원가입
               </button>
             </>
-          ) : (
+          )}
+          {mode === "signup" && (
             <>
               이미 계정이 있으신가요?{" "}
+              <button
+                type="button"
+                onClick={() => switchMode("login")}
+                className="font-medium text-foreground underline-offset-4 hover:underline"
+              >
+                로그인
+              </button>
+            </>
+          )}
+          {mode === "reset-request" && (
+            <>
+              비밀번호가 기억나셨나요?{" "}
               <button
                 type="button"
                 onClick={() => switchMode("login")}

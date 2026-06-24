@@ -1,7 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Inbox, Mic } from "lucide-react";
+
+import { ClientSelect } from "@/components/clients/client-select";
 
 import {
   Card,
@@ -10,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CopyFormatActions } from "@/components/copy-format-actions";
+import { CopyButton } from "@/components/copy-button";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -43,16 +46,30 @@ function formatDate(value: string) {
   });
 }
 
+function HistoryMeta({
+  createdAt,
+  authorName,
+  clientName,
+}: {
+  createdAt: string;
+  authorName: string | null;
+  clientName: string | null;
+}) {
+  const parts = [formatDate(createdAt)];
+  if (clientName) parts.push(`고객: ${clientName}`);
+  if (authorName) parts.push(authorName);
+
+  return (
+    <p className="text-xs text-muted-foreground">{parts.join(" · ")}</p>
+  );
+}
+
 function Section({
   title,
   value,
-  copyFormats = false,
-  emailSubject,
 }: {
   title: string;
   value: string | null;
-  copyFormats?: boolean;
-  emailSubject?: string;
 }) {
   const content = toPlainClientText(value?.trim() ?? "");
   if (!content) return null;
@@ -60,11 +77,7 @@ function Section({
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground">{title}</p>
-        <CopyFormatActions
-          text={content}
-          copyFormats={copyFormats}
-          emailSubject={emailSubject}
-        />
+        <CopyButton text={content} />
       </div>
       <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
         {content}
@@ -77,15 +90,18 @@ export function HistoryView({
   data,
   retentionDays,
   reviewSummary,
-  copyFormats,
   fullConsultationOutput,
+  canFilterByClient,
+  selectedClientId,
 }: {
   data: HistoryData;
   retentionDays: number;
   reviewSummary: boolean;
-  copyFormats: boolean;
   fullConsultationOutput: boolean;
+  canFilterByClient: boolean;
+  selectedClientId: string | null;
 }) {
+  const router = useRouter();
   const [tab, setTab] = useState<TabKey>("requests");
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewText, setReviewText] = useState<string | null>(null);
@@ -115,11 +131,37 @@ export function HistoryView({
     { key: "reports", label: "설명문", count: data.reports.length },
   ];
 
+  const isFiltered = Boolean(selectedClientId);
+  const totalCount =
+    data.requests.length + data.consultations.length + data.reports.length;
+
+  function handleClientFilter(clientId: string | null) {
+    if (clientId) {
+      router.push(`/history?clientId=${clientId}`);
+      return;
+    }
+    router.push("/history");
+  }
+
   return (
     <div className="space-y-5">
       {retentionDays > 0 && (
         <p className="text-sm text-muted-foreground">
           최근 {retentionDays}일 이내 생성 내역만 표시됩니다.
+        </p>
+      )}
+
+      <ClientSelect
+        value={selectedClientId}
+        onChange={handleClientFilter}
+        canSelectClient={canFilterByClient}
+        label="고객별 필터"
+        emptyLabel="전체 고객"
+      />
+
+      {isFiltered && totalCount === 0 && (
+        <p className="text-sm text-muted-foreground">
+          선택한 고객과 연결된 생성 내역이 없습니다.
         </p>
       )}
 
@@ -153,11 +195,7 @@ export function HistoryView({
           <CardHeader>
             <CardTitle className="text-base">대표 검토용 정리</CardTitle>
             <CardAction>
-              <CopyFormatActions
-                text={reviewText}
-                copyFormats={copyFormats}
-                emailSubject="생성 내역 검토"
-              />
+              <CopyButton text={reviewText} />
             </CardAction>
           </CardHeader>
           <CardContent>
@@ -192,7 +230,14 @@ export function HistoryView({
       {tab === "requests" && (
         <div className="space-y-4">
           {data.requests.length === 0 ? (
-            <EmptyState icon={Inbox} title="자료 요청 내역이 없습니다" />
+            <EmptyState
+              icon={Inbox}
+              title={
+                isFiltered
+                  ? "해당 고객의 자료 요청 내역이 없습니다"
+                  : "자료 요청 내역이 없습니다"
+              }
+            />
           ) : (
             data.requests.map((item) => (
               <Card key={item.id}>
@@ -201,16 +246,13 @@ export function HistoryView({
                     {taxLabel(item.taxType)} · {businessLabel(item.businessType)}
                   </CardTitle>
                   <CardAction>
-                    <CopyFormatActions
-                      text={toPlainClientText(item.result)}
-                      copyFormats={copyFormats}
-                      emailSubject="자료 요청 안내"
-                    />
+                    <CopyButton text={toPlainClientText(item.result)} />
                   </CardAction>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(item.createdAt)}
-                    {item.authorName ? ` · ${item.authorName}` : ""}
-                  </p>
+                  <HistoryMeta
+                    createdAt={item.createdAt}
+                    authorName={item.authorName}
+                    clientName={item.clientName}
+                  />
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {item.memo && (
@@ -231,7 +273,14 @@ export function HistoryView({
       {tab === "consultations" && (
         <div className="space-y-4">
           {data.consultations.length === 0 ? (
-            <EmptyState icon={Inbox} title="상담 요약 내역이 없습니다" />
+            <EmptyState
+              icon={Inbox}
+              title={
+                isFiltered
+                  ? "해당 고객의 상담 요약 내역이 없습니다"
+                  : "상담 요약 내역이 없습니다"
+              }
+            />
           ) : (
             data.consultations.map((item) => (
               <Card key={item.id}>
@@ -245,10 +294,11 @@ export function HistoryView({
                       </span>
                     )}
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(item.createdAt)}
-                    {item.authorName ? ` · ${item.authorName}` : ""}
-                  </p>
+                  <HistoryMeta
+                    createdAt={item.createdAt}
+                    authorName={item.authorName}
+                    clientName={item.clientName}
+                  />
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Section title="상담 요약" value={item.summary} />
@@ -257,21 +307,15 @@ export function HistoryView({
                       <Section
                         title="고객 전달용 정리문"
                         value={item.clientSummary}
-                        copyFormats={copyFormats}
-                        emailSubject="상담 내용 정리"
                       />
                       <Section
                         title="추가로 받아야 할 자료"
                         value={item.requiredDocuments}
-                        copyFormats={copyFormats}
-                        emailSubject="추가 자료 요청"
                       />
                       <Section title="내부 후속 조치" value={item.nextActions} />
                       <Section
                         title="다음 안내 사항"
                         value={item.nextGuidance}
-                        copyFormats={copyFormats}
-                        emailSubject="다음 안내"
                       />
                     </>
                   ) : (
@@ -287,7 +331,14 @@ export function HistoryView({
       {tab === "reports" && (
         <div className="space-y-4">
           {data.reports.length === 0 ? (
-            <EmptyState icon={Inbox} title="설명문 내역이 없습니다" />
+            <EmptyState
+              icon={Inbox}
+              title={
+                isFiltered
+                  ? "해당 고객의 설명문 내역이 없습니다"
+                  : "설명문 내역이 없습니다"
+              }
+            />
           ) : (
             data.reports.map((item) => (
               <Card key={item.id}>
@@ -296,16 +347,13 @@ export function HistoryView({
                     {taxLabel(item.taxType)} 설명문
                   </CardTitle>
                   <CardAction>
-                    <CopyFormatActions
-                      text={toPlainClientText(item.result)}
-                      copyFormats={copyFormats}
-                      emailSubject="신고 결과 안내"
-                    />
+                    <CopyButton text={toPlainClientText(item.result)} />
                   </CardAction>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(item.createdAt)}
-                    {item.authorName ? ` · ${item.authorName}` : ""}
-                  </p>
+                  <HistoryMeta
+                    createdAt={item.createdAt}
+                    authorName={item.authorName}
+                    clientName={item.clientName}
+                  />
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <p className="text-xs text-muted-foreground">

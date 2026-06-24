@@ -11,6 +11,7 @@ import {
   NotebookPen,
   ArrowRight,
   Quote,
+  Users,
 } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -68,15 +69,17 @@ const FEATURES = [
     icon: MessagesSquare,
     title: "상담 내용 정리",
     description: "상담 메모를 붙여넣으면 세무사 업무 흐름에 맞게 정리합니다.",
+    planNote:
+      "Starter는 상담 요약·내부 후속 조치만 제공합니다. 고객 전달용 정리문·추가 자료·다음 안내는 Pro 이상에서 이용할 수 있습니다.",
     inputLabel: "입력 예시",
     inputs: ["상담 메모", "통화 내용", "방문 상담 기록"],
     outputLabel: "생성 결과",
     outputs: [
       "상담 요약",
-      "고객에게 보낼 정리문",
-      "추가로 받아야 할 자료",
+      "고객에게 보낼 정리문 (Pro 이상)",
+      "추가로 받아야 할 자료 (Pro 이상)",
       "내부 후속 조치",
-      "다음 안내 사항",
+      "다음 안내 사항 (Pro 이상)",
     ],
   },
   {
@@ -90,6 +93,22 @@ const FEATURES = [
       "고객이 납득할 수 있는 설명 초안",
       "전년 대비 변동 사유 설명",
       "납부기한 안내",
+    ],
+  },
+  {
+    icon: Users,
+    title: "고객 등록·고객별 이력",
+    description:
+      "거래처 정보를 등록해 두고 생성 시 선택하면 호칭·사업 유형이 반영된 문구를 만듭니다.",
+    planNote:
+      "Starter에는 포함되지 않습니다. Pro는 최대 20명, Team은 사무소 공유 최대 200명까지 등록할 수 있습니다.",
+    inputLabel: "등록 예시",
+    inputs: ["상호명", "담당자", "사업 유형", "연락처", "거래처 메모"],
+    outputLabel: "활용",
+    outputs: [
+      "자료 요청·상담·설명문 생성 시 고객 선택",
+      "고객명이 반영된 안내문 초안",
+      "생성 내역에서 고객별 조회",
     ],
   },
 ];
@@ -131,9 +150,11 @@ const USE_CASES = [
   },
   {
     title: "신규 수임 상담 후",
+    planNote:
+      "Starter는 내부 요약만, Pro 이상은 고객 전달용 정리문·추가 자료 목록까지 생성합니다.",
     items: [
       "상담 내용 요약",
-      "고객에게 보낼 정리문 작성",
+      "고객에게 보낼 정리문 작성 (Pro 이상)",
       "추가 요청 자료 및 내부 처리사항 정리",
     ],
   },
@@ -200,11 +221,15 @@ const FAQS = [
   },
   {
     q: "카카오톡으로 바로 보낼 수 있나요?",
-    a: "생성된 문구를 복사해서 카카오톡, 문자, 이메일에 붙여넣을 수 있습니다.",
+    a: "생성된 문구를 복사해서 카카오톡, 문자, 이메일 등 원하는 채널에 붙여넣을 수 있습니다.",
   },
   {
     q: "직원도 사용할 수 있나요?",
     a: "Team 플랜에서 최대 5인 계정을 지원합니다. 개인 세무사는 Starter·Pro 플랜으로 시작하실 수 있습니다.",
+  },
+  {
+    q: "거래처(고객) 정보를 저장할 수 있나요?",
+    a: "Pro·Team 플랜(무료 체험 포함)에서 고객을 등록할 수 있습니다. Pro는 최대 20명, Team은 사무소 전체가 공유하는 고객 최대 200명까지 등록할 수 있습니다. Starter 플랜에는 고객 등록·고객별 이력 기능이 포함되지 않습니다.",
   },
   {
     q: "AI가 틀린 내용을 작성하면 어떻게 하나요?",
@@ -382,6 +407,11 @@ export default function Home() {
                       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                         {feature.description}
                       </p>
+                      {"planNote" in feature && feature.planNote && (
+                        <p className="mt-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                          {feature.planNote}
+                        </p>
+                      )}
                     </CardHeader>
                     <CardContent>
                       <div className="grid gap-6 sm:grid-cols-2">
@@ -479,6 +509,11 @@ export default function Home() {
                   className="rounded-xl bg-background p-6 ring-1 ring-foreground/10"
                 >
                   <p className="font-semibold">{useCase.title}</p>
+                  {"planNote" in useCase && useCase.planNote && (
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                      {useCase.planNote}
+                    </p>
+                  )}
                   <ul className="mt-4 space-y-2">
                     {useCase.items.map((item) => (
                       <li key={item} className="flex items-start gap-2 text-sm">
@@ -587,8 +622,9 @@ export default function Home() {
               </h2>
               <p className="mt-3 text-muted-foreground">
                 신용카드 없이 14일 무료 체험으로 먼저 확인하세요. 체험 기간에는
-                생성 30건·기록 14일 보관만 제한되며, Pro·Team 기능을 모두
-                이용할 수 있습니다. 연 결제 시 2개월 무료입니다. (부가세 별도)
+                생성 30건·기록 14일 보관만 제한되며, Pro·Team 기능(고객 등록
+                포함)을 모두 이용할 수 있습니다. 연 결제 시 2개월 무료입니다.
+                (부가세 별도)
               </p>
             </div>
             <div className="mt-12 grid gap-5 lg:grid-cols-3">

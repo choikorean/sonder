@@ -13,6 +13,10 @@ import {
 } from "@/components/ui/card";
 import { GeneratedOutput } from "@/components/generated-output";
 import {
+  ClientSelect,
+  type ClientSelectOption,
+} from "@/components/clients/client-select";
+import {
   TAX_TYPE_LABELS,
   BUSINESS_TYPE_LABELS,
   type TaxType,
@@ -27,17 +31,23 @@ const selectClassName = cn(
 );
 
 type ApiResult =
-  | { success: true; data: { id: string; result: string; copyFormats?: boolean } }
+  | { success: true; data: { id: string; result: string } }
   | { success: false; error: string };
 
-export function RequestForm() {
+export function RequestForm({
+  canSelectClient,
+  initialClientId = null,
+}: {
+  canSelectClient: boolean;
+  initialClientId?: string | null;
+}) {
   const [taxType, setTaxType] = useState<TaxType | "">("");
   const [businessType, setBusinessType] = useState<BusinessType | "">("");
+  const [clientId, setClientId] = useState<string | null>(initialClientId);
   const [memo, setMemo] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
-  const [copyFormats, setCopyFormats] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,6 +73,7 @@ export function RequestForm() {
           taxType,
           businessType,
           memo: memo.trim() || undefined,
+          clientId: clientId ?? undefined,
         }),
       });
       const json: ApiResult = await res.json();
@@ -71,12 +82,21 @@ export function RequestForm() {
         setError(json.error);
       } else {
         setResult(json.data.result);
-        setCopyFormats(json.data.copyFormats ?? false);
       }
     } catch {
       setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleClientChange(
+    nextClientId: string | null,
+    client?: ClientSelectOption,
+  ) {
+    setClientId(nextClientId);
+    if (client?.businessType) {
+      setBusinessType(client.businessType);
     }
   }
 
@@ -88,6 +108,13 @@ export function RequestForm() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <ClientSelect
+              value={clientId}
+              onChange={handleClientChange}
+              disabled={loading}
+              canSelectClient={canSelectClient}
+            />
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="taxType">세목</Label>
@@ -160,12 +187,7 @@ export function RequestForm() {
       </Card>
 
       {result && (
-        <GeneratedOutput
-          title="자료 요청문"
-          content={result}
-          copyFormats={copyFormats}
-          emailSubject="자료 요청 안내"
-        />
+        <GeneratedOutput title="자료 요청문" content={result} />
       )}
     </div>
   );

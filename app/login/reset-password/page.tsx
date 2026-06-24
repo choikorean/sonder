@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { AuthForm } from "@/components/forms/auth-form";
+import { ResetPasswordForm } from "@/components/forms/reset-password-form";
 
 export const metadata = {
-  title: "로그인",
+  title: "비밀번호 재설정",
 };
 
-export default function LoginPage() {
+export default function ResetPasswordPage() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-12">
       <div className="mb-8 text-center">
@@ -20,11 +20,8 @@ export default function LoginPage() {
           <div className="text-sm text-muted-foreground">불러오는 중...</div>
         }
       >
-        <AuthForm />
+        <ResetPasswordForm />
       </Suspense>
-      <p className="mt-6 max-w-md text-center text-xs text-muted-foreground">
-        AI가 생성한 초안입니다. 고객 발송 전 세무사가 반드시 검토해야 합니다.
-      </p>
     </main>
   );
 }

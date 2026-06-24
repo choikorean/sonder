@@ -13,9 +13,8 @@ import type { PlanId } from "@/lib/plans";
  * | 사무소명/담당자명 자동 삽입         | officeSignature         |   ✗     |  ✓  |  ✓   |  ✓   |
  * | 자주 쓰는 문구 저장                 | savedPhrases            |   ✗     |  ✓  |  ✓   |  ✓   |
  * | 사무소 공통 템플릿 (Team)           | officeSharedPhrases     |   ✗     |  ✗  |  ✓   |  ✓   |
- * | 카톡/이메일 복사 포맷               | copyFormats             |   ✗     |  ✓  |  ✓   |  ✓   |
  * | 대표 검토용 결과 정리 (Team)        | reviewSummary           |   ✗     |  ✗  |  ✓   |  ✓   |
- * | 우선 이메일 지원 / 우선 지원+온보딩 | prioritySupport         |   ✗     |  ✓  |  ✓   |  ✓   |
+ * | 고객 등록·관리 (Pro 20 / Team 200)  | clientProfiles          |   ✗     |  ✓  |  ✓   |  ✓   |
  * | 월 N건 생성                         | plans.monthlyLimit      |  100    | 500 | 2000 |  30  |
  * | 생성 기록 N일 보관                  | plans.retentionDays     |   30    | 365 |  365 |  14  |
  * | N인 계정                            | plans.seats             |    1    |   1 |    5 |   1  |
@@ -34,12 +33,10 @@ export type PlanCapabilities = {
   savedPhrases: boolean;
   /** 사무소 공통 템플릿(문구 scope=office) */
   officeSharedPhrases: boolean;
-  /** 카톡/이메일 복사 포맷 */
-  copyFormats: boolean;
   /** 생성 내역 대표 검토용 정리 */
   reviewSummary: boolean;
-  /** 우선 이메일 지원·온보딩 안내 노출 */
-  prioritySupport: boolean;
+  /** 고객(CRM) 등록·관리 — Pro·Team·체험 */
+  clientProfiles: boolean;
 };
 
 const STARTER_CAPABILITIES: PlanCapabilities = {
@@ -48,9 +45,8 @@ const STARTER_CAPABILITIES: PlanCapabilities = {
   officeSignature: false,
   savedPhrases: false,
   officeSharedPhrases: false,
-  copyFormats: false,
   reviewSummary: false,
-  prioritySupport: false,
+  clientProfiles: false,
 };
 
 const PRO_CAPABILITIES: PlanCapabilities = {
@@ -59,9 +55,8 @@ const PRO_CAPABILITIES: PlanCapabilities = {
   officeSignature: true,
   savedPhrases: true,
   officeSharedPhrases: false,
-  copyFormats: true,
   reviewSummary: false,
-  prioritySupport: true,
+  clientProfiles: true,
 };
 
 const TEAM_CAPABILITIES: PlanCapabilities = {
@@ -85,9 +80,8 @@ export const TRIAL_CAPABILITIES: PlanCapabilities = {
   officeSignature: true,
   savedPhrases: true,
   officeSharedPhrases: true,
-  copyFormats: true,
   reviewSummary: true,
-  prioritySupport: true,
+  clientProfiles: true,
 };
 
 export function getPlanCapabilities(
@@ -108,4 +102,9 @@ export function needsPromptProfile(capabilities: PlanCapabilities): boolean {
 /** 설정 화면에서 문구 저장·편집 기능을 쓸 수 있는지 */
 export function canManagePhrases(capabilities: PlanCapabilities): boolean {
   return capabilities.savedPhrases || capabilities.officeSharedPhrases;
+}
+
+/** 고객(CRM) 등록·관리 화면/API 이용 가능 여부 */
+export function canManageClients(capabilities: PlanCapabilities): boolean {
+  return capabilities.clientProfiles;
 }

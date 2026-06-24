@@ -83,9 +83,63 @@ export type Database = {
         }
         Relationships: []
       }
+      clients: {
+        Row: {
+          business_type: string | null
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          memo: string | null
+          name: string
+          organization_id: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_type?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          memo?: string | null
+          name: string
+          organization_id?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_type?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          memo?: string | null
+          name?: string
+          organization_id?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consultation_summaries: {
         Row: {
           audio_url: string | null
+          client_id: string | null
           client_summary: string
           created_at: string
           id: string
@@ -99,6 +153,7 @@ export type Database = {
         }
         Insert: {
           audio_url?: string | null
+          client_id?: string | null
           client_summary: string
           created_at?: string
           id?: string
@@ -112,6 +167,7 @@ export type Database = {
         }
         Update: {
           audio_url?: string | null
+          client_id?: string | null
           client_summary?: string
           created_at?: string
           id?: string
@@ -123,7 +179,15 @@ export type Database = {
           transcript?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "consultation_summaries_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organization_members: {
         Row: {
@@ -437,6 +501,7 @@ export type Database = {
       report_explanations: {
         Row: {
           change_reason: string | null
+          client_id: string | null
           created_at: string
           current_tax: number
           due_date: string | null
@@ -449,6 +514,7 @@ export type Database = {
         }
         Insert: {
           change_reason?: string | null
+          client_id?: string | null
           created_at?: string
           current_tax: number
           due_date?: string | null
@@ -461,6 +527,7 @@ export type Database = {
         }
         Update: {
           change_reason?: string | null
+          client_id?: string | null
           created_at?: string
           current_tax?: number
           due_date?: string | null
@@ -471,11 +538,20 @@ export type Database = {
           tax_type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "report_explanations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       request_generations: {
         Row: {
           business_type: string
+          client_id: string | null
           created_at: string
           id: string
           memo: string | null
@@ -485,6 +561,7 @@ export type Database = {
         }
         Insert: {
           business_type: string
+          client_id?: string | null
           created_at?: string
           id?: string
           memo?: string | null
@@ -494,6 +571,7 @@ export type Database = {
         }
         Update: {
           business_type?: string
+          client_id?: string | null
           created_at?: string
           id?: string
           memo?: string | null
@@ -501,7 +579,15 @@ export type Database = {
           tax_type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "request_generations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_phrases: {
         Row: {

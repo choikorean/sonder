@@ -3,17 +3,12 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriberContext } from "@/lib/subscriber-context";
 import { TeamSettingsForm } from "@/components/settings/team-settings-form";
+import { SETTINGS_LINKS } from "@/lib/settings-nav";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
   title: "팀 관리",
 };
-
-const SETTINGS_LINKS = [
-  { href: "/settings", label: "일반 설정" },
-  { href: "/settings/team", label: "팀 관리" },
-  { href: "/settings/billing", label: "결제 및 구독" },
-] as const;
 
 export default async function TeamSettingsPage() {
   const supabase = await createClient();

@@ -18,6 +18,51 @@ const BUSINESS_TYPES = [
   "ETC",
 ] as const;
 
+export const clientSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "고객명(상호)을 입력해 주세요.")
+    .max(100, "고객명은 100자 이내로 입력해 주세요."),
+  contactName: z
+    .string()
+    .trim()
+    .max(50, "담당자명은 50자 이내로 입력해 주세요.")
+    .nullish(),
+  businessType: z.enum(BUSINESS_TYPES, { error: "사업 유형을 선택해 주세요." }).nullish(),
+  phone: z
+    .string()
+    .trim()
+    .max(30, "연락처는 30자 이내로 입력해 주세요.")
+    .nullish(),
+  email: z
+    .string()
+    .trim()
+    .max(200, "이메일은 200자 이내로 입력해 주세요.")
+    .nullish()
+    .refine(
+      (value) => !value || z.string().email().safeParse(value).success,
+      "이메일 형식이 올바르지 않습니다.",
+    ),
+  memo: z
+    .string()
+    .trim()
+    .max(1000, "메모는 1,000자 이내로 입력해 주세요.")
+    .nullish(),
+});
+
+export const clientUpdateSchema = clientSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
+export type ClientInput = z.infer<typeof clientSchema>;
+export type ClientUpdateInput = z.infer<typeof clientUpdateSchema>;
+
+const optionalClientIdSchema = z
+  .string()
+  .uuid("고객 정보가 올바르지 않습니다.")
+  .nullish();
+
 export const requestGenerateSchema = z.object({
   taxType: z.enum(TAX_TYPES, { error: "세목을 선택해 주세요." }),
   businessType: z.enum(BUSINESS_TYPES, { error: "사업 유형을 선택해 주세요." }),
@@ -25,6 +70,7 @@ export const requestGenerateSchema = z.object({
     .string()
     .max(1000, "특이사항은 1000자 이내로 입력해 주세요.")
     .nullish(),
+  clientId: optionalClientIdSchema,
 });
 
 export const consultationSummarySchema = z.object({
@@ -33,6 +79,11 @@ export const consultationSummarySchema = z.object({
     .trim()
     .min(10, "상담 내용을 10자 이상 입력해 주세요.")
     .max(20000, "상담 내용은 20,000자 이내로 입력해 주세요."),
+  clientId: optionalClientIdSchema,
+});
+
+export const consultationClientIdSchema = z.object({
+  clientId: optionalClientIdSchema,
 });
 
 export const reportExplanationSchema = z.object({
@@ -56,6 +107,7 @@ export const reportExplanationSchema = z.object({
     .string()
     .max(1000, "특이사항은 1000자 이내로 입력해 주세요.")
     .nullish(),
+  clientId: optionalClientIdSchema,
 });
 
 export const checkoutSchema = z.object({
