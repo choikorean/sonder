@@ -11,6 +11,7 @@ import {
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { getUsageStatus, recordUsage, usageLimitMessage } from "@/lib/usage";
 import { getSubscriberContext } from "@/lib/subscriber-context";
+import { toPlainClientText } from "@/lib/plain-text";
 import { getPhraseContentsForPrompt } from "@/lib/saved-phrases";
 
 export async function POST(request: NextRequest) {
@@ -39,10 +40,9 @@ export async function POST(request: NextRequest) {
   }
 
   const ctx = await getSubscriberContext(supabase);
-  const phrases = await getPhraseContentsForPrompt(
-    supabase,
-    ctx.capabilities,
-  );
+  const phrases = await getPhraseContentsForPrompt(supabase, ctx.capabilities, {
+    organizationId: ctx.organization?.id,
+  });
 
   let result: string;
   let tokensEstimated: number | null = null;
@@ -66,7 +66,9 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    result = completion.choices[0]?.message?.content?.trim() ?? "";
+    result = toPlainClientText(
+      completion.choices[0]?.message?.content?.trim() ?? "",
+    );
     tokensEstimated = completion.usage?.total_tokens ?? null;
     if (!result) {
       throw new Error("빈 응답");

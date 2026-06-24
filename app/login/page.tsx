@@ -11,7 +11,7 @@ export default function LoginPage() {
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-12">
       <div className="mb-8 text-center">
         <Link href="/" className="text-xl font-bold tracking-tight">
-          TaxFlow
+          TaxFlo
         </Link>
       </div>
       <AuthForm />

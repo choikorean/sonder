@@ -18,6 +18,7 @@ import {
   type CheckoutType,
   type PaidPlanId,
 } from "@/lib/billing/helpers";
+import { ensureTeamOrganization } from "@/lib/org";
 import {
   getPlan,
   planPrice,
@@ -288,6 +289,13 @@ async function finalizeSubscriptionCheckout(
 
   if (subError || !subscription) {
     throw new Error("구독 활성화에 실패했습니다.");
+  }
+
+  if (planId === "team") {
+    await ensureTeamOrganization(supabase, {
+      ownerUserId: params.userId,
+      seatLimit: getPlan("team").seats,
+    });
   }
 
   await supabase

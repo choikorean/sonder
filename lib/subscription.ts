@@ -10,6 +10,21 @@ import {
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
 
+type SubscriptionRow = {
+  plan: string;
+  status: string;
+  billing_cycle: string;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  trial_ends_at: string | null;
+  next_billing_at: string | null;
+  cancel_at_period_end: boolean;
+  canceled_at: string | null;
+};
+
+const SUBSCRIPTION_SELECT =
+  "plan, status, billing_cycle, current_period_start, current_period_end, trial_ends_at, next_billing_at, cancel_at_period_end, canceled_at";
+
 export type CurrentSubscription = {
   /** 실제 구독 레코드의 플랜 (없으면 free) */
   planId: PlanId;
@@ -29,16 +44,9 @@ export type CurrentSubscription = {
   isTrialing: boolean;
 };
 
-export async function getSubscription(
-  supabase: SupabaseServer,
-): Promise<CurrentSubscription> {
-  const { data } = await supabase
-    .from("subscriptions")
-    .select(
-      "plan, status, billing_cycle, current_period_start, current_period_end, trial_ends_at, next_billing_at, cancel_at_period_end, canceled_at",
-    )
-    .maybeSingle();
-
+function mapSubscriptionRow(
+  data: SubscriptionRow | null | undefined,
+): CurrentSubscription {
   const status = data?.status ?? "inactive";
   const planRaw = data?.plan ?? "free";
   const cycleRaw = data?.billing_cycle ?? "monthly";
@@ -72,4 +80,42 @@ export async function getSubscription(
     isActive,
     isTrialing,
   };
+}
+
+export async function getSubscription(
+  supabase: SupabaseServer,
+): Promise<CurrentSubscription> {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+
+  if (userId) {
+    const { data: membership } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (membership?.organization_id) {
+      const { data: orgSub } = await supabase
+        .from("subscriptions")
+        .select(SUBSCRIPTION_SELECT)
+        .eq("organization_id", membership.organization_id)
+        .maybeSingle();
+
+      if (orgSub) {
+        return mapSubscriptionRow(orgSub);
+      }
+    }
+
+    const { data: ownSub } = await supabase
+      .from("subscriptions")
+      .select(SUBSCRIPTION_SELECT)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    return mapSubscriptionRow(ownSub);
+  }
+
+  return mapSubscriptionRow(null);
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { LoadingButton } from "@/components/loading-button";
@@ -16,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { toPlainClientText } from "@/lib/plain-text";
 
 type SummaryData = {
   transcript: string | null;
@@ -41,7 +43,7 @@ function OutputSection({
   copyFormats?: boolean;
   emailSubject?: string;
 }) {
-  const content = value.trim();
+  const content = toPlainClientText(value.trim());
   return (
     <Card>
       <CardHeader>
@@ -69,7 +71,11 @@ function OutputSection({
   );
 }
 
-export function ConsultationForm() {
+export function ConsultationForm({
+  fullConsultationOutput,
+}: {
+  fullConsultationOutput: boolean;
+}) {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -187,25 +193,43 @@ export function ConsultationForm() {
           )}
 
           <OutputSection title="상담 요약" value={data.summary} />
-          <OutputSection
-            title="고객 전달용 정리문"
-            value={data.clientSummary}
-            copyFormats={copyFormats}
-            emailSubject="상담 내용 정리"
-          />
-          <OutputSection
-            title="추가로 받아야 할 자료"
-            value={data.requiredDocuments}
-            copyFormats={copyFormats}
-            emailSubject="추가 자료 요청"
-          />
-          <OutputSection title="내부 후속 조치" value={data.nextActions} />
-          <OutputSection
-            title="다음 안내 사항"
-            value={data.nextGuidance}
-            copyFormats={copyFormats}
-            emailSubject="다음 안내"
-          />
+          {fullConsultationOutput ? (
+            <>
+              <OutputSection
+                title="고객 전달용 정리문"
+                value={data.clientSummary}
+                copyFormats={copyFormats}
+                emailSubject="상담 내용 정리"
+              />
+              <OutputSection
+                title="추가로 받아야 할 자료"
+                value={data.requiredDocuments}
+                copyFormats={copyFormats}
+                emailSubject="추가 자료 요청"
+              />
+              <OutputSection title="내부 후속 조치" value={data.nextActions} />
+              <OutputSection
+                title="다음 안내 사항"
+                value={data.nextGuidance}
+                copyFormats={copyFormats}
+                emailSubject="다음 안내"
+              />
+            </>
+          ) : (
+            <>
+              <OutputSection title="내부 후속 조치" value={data.nextActions} />
+              <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+                고객 전달용 정리문·추가 자료 목록·다음 안내는{" "}
+                <Link
+                  href="/settings/billing"
+                  className="font-medium text-foreground underline underline-offset-4"
+                >
+                  Pro 플랜
+                </Link>
+                에서 제공됩니다.
+              </div>
+            </>
+          )}
 
           <ReviewDisclaimer />
         </div>

@@ -15,7 +15,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/empty-state";
+import { PrioritySupportCard } from "@/components/support/priority-support-card";
 import { TAX_TYPE_LABELS, FEATURE_LABELS, type TaxType } from "@/lib/constants";
+import { getSubscriberContext } from "@/lib/subscriber-context";
+import { getSupportConfig, getSupportTier } from "@/lib/support";
 import { getUsageStatus, getMonthlyUsageByFeature } from "@/lib/usage";
 
 export const metadata = {
@@ -127,11 +130,18 @@ const FEATURE_ORDER = [
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const [recentItems, usage, byFeature] = await Promise.all([
+  const [recentItems, usage, byFeature, ctx] = await Promise.all([
     getRecentItems(),
     getUsageStatus(supabase),
     getMonthlyUsageByFeature(supabase),
+    getSubscriberContext(supabase),
   ]);
+  const support = getSupportConfig();
+  const supportTier = getSupportTier({
+    prioritySupport: ctx.capabilities.prioritySupport,
+    planId: ctx.subscription.planId,
+    isTrialing: ctx.subscription.isTrialing,
+  });
 
   const percent =
     usage.limit > 0
@@ -251,6 +261,18 @@ export default async function DashboardPage() {
           </Card>
         )}
       </section>
+
+      {supportTier !== "none" && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">고객 지원</h2>
+          <PrioritySupportCard
+            tier={supportTier}
+            priorityEmail={support.priorityEmail}
+            teamOnboardingUrl={support.teamOnboardingUrl}
+            compact
+          />
+        </section>
+      )}
     </div>
   );
 }

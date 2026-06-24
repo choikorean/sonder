@@ -16,7 +16,10 @@ export async function GET() {
   }
 
   const ctx = await getSubscriberContext(supabase);
-  const phrases = await listSavedPhrases(supabase, ctx.capabilities);
+  const phrases = await listSavedPhrases(supabase, ctx.capabilities, {
+    organizationId: ctx.organization?.id,
+    userId: user.id,
+  });
   return successResponse({
     phrases,
     canUsePersonal: ctx.capabilities.savedPhrases,
@@ -58,6 +61,12 @@ export async function POST(request: NextRequest) {
       403,
     );
   }
+  if (scope === "office" && !ctx.organization?.id) {
+    return errorResponse(
+      "사무소 공통 템플릿은 Team 사무소에 소속된 후 이용할 수 있습니다.",
+      403,
+    );
+  }
 
   const { data, error } = await supabase
     .from("saved_phrases")
@@ -66,6 +75,7 @@ export async function POST(request: NextRequest) {
       label,
       content,
       scope,
+      organization_id: scope === "office" ? ctx.organization!.id : null,
     })
     .select("id, label, content, scope, created_at")
     .single();
@@ -89,16 +99,34 @@ export async function DELETE(request: NextRequest) {
     return errorResponse("로그인이 필요합니다.", 401);
   }
 
+  const ctx = await getSubscriberContext(supabase);
   const id = request.nextUrl.searchParams.get("id");
   if (!id) {
     return errorResponse("삭제할 문구를 지정해 주세요.", 400);
   }
 
-  const { error } = await supabase
+  const { data: phrase } = await supabase
     .from("saved_phrases")
-    .delete()
+    .select("id, scope, user_id, organization_id")
     .eq("id", id)
-    .eq("user_id", user.id);
+    .maybeSingle();
+
+  if (!phrase) {
+    return errorResponse("문구를 찾을 수 없습니다.", 404);
+  }
+
+  if (phrase.scope === "personal" && phrase.user_id !== user.id) {
+    return errorResponse("삭제 권한이 없습니다.", 403);
+  }
+
+  if (
+    phrase.scope === "office" &&
+    (!ctx.organization || phrase.organization_id !== ctx.organization.id)
+  ) {
+    return errorResponse("삭제 권한이 없습니다.", 403);
+  }
+
+  const { error } = await supabase.from("saved_phrases").delete().eq("id", id);
 
   if (error) {
     return errorResponse("문구 삭제에 실패했습니다.", 500);

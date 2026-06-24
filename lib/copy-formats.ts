@@ -1,5 +1,6 @@
 import type { HistoryData } from "@/lib/history";
 import { TAX_TYPE_LABELS, type TaxType } from "@/lib/constants";
+import { toPlainClientText } from "@/lib/plain-text";
 
 function taxLabel(value: string) {
   return TAX_TYPE_LABELS[value as TaxType] ?? value;
@@ -21,7 +22,7 @@ export function buildReviewSummary(
   authorName?: string | null,
 ): string {
   const lines: string[] = [
-    "[TaxFlow 대표 검토용 생성 내역 정리]",
+    "[TaxFlo 대표 검토용 생성 내역 정리]",
     `작성 시각: ${new Date().toLocaleString("ko-KR")}`,
   ];
   if (authorName?.trim()) {
@@ -32,8 +33,9 @@ export function buildReviewSummary(
     lines.push("- (없음)");
   } else {
     for (const item of history.requests.slice(0, 10)) {
+      const authorSuffix = item.authorName ? ` · ${item.authorName}` : "";
       lines.push(
-        `- ${formatDate(item.createdAt)} · ${taxLabel(item.taxType)} · ${item.result.slice(0, 120).replace(/\n/g, " ")}…`,
+        `- ${formatDate(item.createdAt)}${authorSuffix} · ${taxLabel(item.taxType)} · ${item.result.slice(0, 120).replace(/\n/g, " ")}…`,
       );
     }
   }
@@ -43,8 +45,9 @@ export function buildReviewSummary(
     lines.push("- (없음)");
   } else {
     for (const item of history.consultations.slice(0, 10)) {
+      const authorSuffix = item.authorName ? ` · ${item.authorName}` : "";
       lines.push(
-        `- ${formatDate(item.createdAt)} · ${item.summary.slice(0, 120).replace(/\n/g, " ")}…`,
+        `- ${formatDate(item.createdAt)}${authorSuffix} · ${item.summary.slice(0, 120).replace(/\n/g, " ")}…`,
       );
     }
   }
@@ -54,8 +57,9 @@ export function buildReviewSummary(
     lines.push("- (없음)");
   } else {
     for (const item of history.reports.slice(0, 10)) {
+      const authorSuffix = item.authorName ? ` · ${item.authorName}` : "";
       lines.push(
-        `- ${formatDate(item.createdAt)} · ${taxLabel(item.taxType)} · ${item.result.slice(0, 120).replace(/\n/g, " ")}…`,
+        `- ${formatDate(item.createdAt)}${authorSuffix} · ${taxLabel(item.taxType)} · ${item.result.slice(0, 120).replace(/\n/g, " ")}…`,
       );
     }
   }
@@ -65,11 +69,11 @@ export function buildReviewSummary(
 }
 
 export function formatForKakao(text: string): string {
-  return text.trim();
+  return toPlainClientText(text);
 }
 
 export function formatForEmail(text: string, subject = "안내드립니다"): string {
-  return `제목: ${subject}\n\n${text.trim()}`;
+  return `제목: ${subject}\n\n${toPlainClientText(text)}`;
 }
 
 export function retentionCutoffIso(retentionDays: number): string | null {

@@ -21,6 +21,7 @@ import {
   type BusinessType,
 } from "@/lib/constants";
 import type { HistoryData } from "@/lib/history";
+import { toPlainClientText } from "@/lib/plain-text";
 
 type TabKey = "requests" | "consultations" | "reports";
 
@@ -53,7 +54,7 @@ function Section({
   copyFormats?: boolean;
   emailSubject?: string;
 }) {
-  const content = value?.trim();
+  const content = toPlainClientText(value?.trim() ?? "");
   if (!content) return null;
   return (
     <div className="space-y-1">
@@ -77,11 +78,13 @@ export function HistoryView({
   retentionDays,
   reviewSummary,
   copyFormats,
+  fullConsultationOutput,
 }: {
   data: HistoryData;
   retentionDays: number;
   reviewSummary: boolean;
   copyFormats: boolean;
+  fullConsultationOutput: boolean;
 }) {
   const [tab, setTab] = useState<TabKey>("requests");
   const [reviewLoading, setReviewLoading] = useState(false);
@@ -199,7 +202,7 @@ export function HistoryView({
                   </CardTitle>
                   <CardAction>
                     <CopyFormatActions
-                      text={item.result}
+                      text={toPlainClientText(item.result)}
                       copyFormats={copyFormats}
                       emailSubject="자료 요청 안내"
                     />
@@ -216,7 +219,7 @@ export function HistoryView({
                     </p>
                   )}
                   <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                    {item.result}
+                    {toPlainClientText(item.result)}
                   </p>
                 </CardContent>
               </Card>
@@ -249,25 +252,31 @@ export function HistoryView({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Section title="상담 요약" value={item.summary} />
-                  <Section
-                    title="고객 전달용 정리문"
-                    value={item.clientSummary}
-                    copyFormats={copyFormats}
-                    emailSubject="상담 내용 정리"
-                  />
-                  <Section
-                    title="추가로 받아야 할 자료"
-                    value={item.requiredDocuments}
-                    copyFormats={copyFormats}
-                    emailSubject="추가 자료 요청"
-                  />
-                  <Section title="내부 후속 조치" value={item.nextActions} />
-                  <Section
-                    title="다음 안내 사항"
-                    value={item.nextGuidance}
-                    copyFormats={copyFormats}
-                    emailSubject="다음 안내"
-                  />
+                  {fullConsultationOutput ? (
+                    <>
+                      <Section
+                        title="고객 전달용 정리문"
+                        value={item.clientSummary}
+                        copyFormats={copyFormats}
+                        emailSubject="상담 내용 정리"
+                      />
+                      <Section
+                        title="추가로 받아야 할 자료"
+                        value={item.requiredDocuments}
+                        copyFormats={copyFormats}
+                        emailSubject="추가 자료 요청"
+                      />
+                      <Section title="내부 후속 조치" value={item.nextActions} />
+                      <Section
+                        title="다음 안내 사항"
+                        value={item.nextGuidance}
+                        copyFormats={copyFormats}
+                        emailSubject="다음 안내"
+                      />
+                    </>
+                  ) : (
+                    <Section title="내부 후속 조치" value={item.nextActions} />
+                  )}
                 </CardContent>
               </Card>
             ))
@@ -288,7 +297,7 @@ export function HistoryView({
                   </CardTitle>
                   <CardAction>
                     <CopyFormatActions
-                      text={item.result}
+                      text={toPlainClientText(item.result)}
                       copyFormats={copyFormats}
                       emailSubject="신고 결과 안내"
                     />
@@ -307,7 +316,7 @@ export function HistoryView({
                     {item.dueDate && ` · 납부기한: ${item.dueDate}`}
                   </p>
                   <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                    {item.result}
+                    {toPlainClientText(item.result)}
                   </p>
                 </CardContent>
               </Card>

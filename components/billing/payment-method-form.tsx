@@ -95,7 +95,7 @@ export function PaymentMethodForm({ planId, cycle }: Props) {
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
         새 카드 등록이 완료된 후 기존 결제수단은 자동으로 교체됩니다.
-        TaxFlow는 카드번호를 저장하지 않습니다.
+        TaxFlo는 카드번호를 저장하지 않습니다.
       </p>
 
       <form

@@ -1,6 +1,6 @@
 # PRD.md
 
-# TaxFlow
+# TaxFlo
 
 세무사 고객 커뮤니케이션 자동화 SaaS
 

@@ -31,6 +31,9 @@ export type Feature = keyof typeof FEATURE_LABELS;
 export const REVIEW_DISCLAIMER =
   "AI가 생성한 초안입니다. 고객 발송 전 세무사가 반드시 검토해야 합니다.";
 
+/** 일반·우선 지원 기본 이메일 (env 미설정 시 fallback) */
+export const DEFAULT_SUPPORT_EMAIL = "support@taxflo.kr";
+
 export const AUDIO_MAX_BYTES = 26214400; // 25MB
 
 export const AUDIO_ALLOWED_MIME_TYPES = [

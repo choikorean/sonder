@@ -12,7 +12,7 @@ export function planGoodsName(
 ): string {
   const plan = getPlan(planId);
   const cycleLabel = cycle === "yearly" ? "연" : "월";
-  return `TaxFlow ${plan.name} ${cycleLabel} 구독`;
+  return `TaxFlo ${plan.name} ${cycleLabel} 구독`;
 }
 
 export function addDays(date: Date, days: number): Date {

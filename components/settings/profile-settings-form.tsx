@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { LoadingButton } from "@/components/loading-button";
@@ -23,11 +24,7 @@ type ApiResult =
   | { success: true; data: ProfileData }
   | { success: false; error: string };
 
-export function ProfileSettingsForm({
-  canEdit,
-}: {
-  canEdit: boolean;
-}) {
+export function ProfileSettingsForm({ canEdit }: { canEdit: boolean }) {
   const [officeName, setOfficeName] = useState("");
   const [contactName, setContactName] = useState("");
   const [phone, setPhone] = useState("");
@@ -96,10 +93,21 @@ export function ProfileSettingsForm({
           <p className="text-sm text-muted-foreground">불러오는 중...</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!canEdit && (
-              <p className="rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">
-                사무소명·담당자명 자동 삽입은 Pro 이상 요금제에서 이용할 수
-                있습니다.
+            {canEdit ? (
+              <p className="text-sm text-muted-foreground">
+                입력한 사무소명·담당자명·연락처는 자료 요청문·신고 결과 설명문 생성 시
+                자동으로 반영됩니다.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                사무소 프로필 편집 및 생성문 자동 삽입은{" "}
+                <Link
+                  href="/settings/billing"
+                  className="font-medium text-foreground underline underline-offset-4"
+                >
+                  Pro 플랜
+                </Link>
+                에서 이용할 수 있습니다. 아래 정보는 참고용으로만 표시됩니다.
               </p>
             )}
 
@@ -111,7 +119,9 @@ export function ProfileSettingsForm({
                   value={officeName}
                   onChange={(e) => setOfficeName(e.target.value)}
                   placeholder="예) ○○세무회계"
-                  disabled={!canEdit || saving}
+                  disabled={saving || !canEdit}
+                  readOnly={!canEdit}
+                  className={!canEdit ? "bg-muted" : undefined}
                 />
               </div>
               <div className="space-y-2">
@@ -121,7 +131,9 @@ export function ProfileSettingsForm({
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   placeholder="예) 홍길동 세무사"
-                  disabled={!canEdit || saving}
+                  disabled={saving || !canEdit}
+                  readOnly={!canEdit}
+                  className={!canEdit ? "bg-muted" : undefined}
                 />
               </div>
             </div>
@@ -134,7 +146,9 @@ export function ProfileSettingsForm({
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="예) 02-1234-5678"
-                  disabled={!canEdit || saving}
+                  disabled={saving || !canEdit}
+                  readOnly={!canEdit}
+                  className={!canEdit ? "bg-muted" : undefined}
                 />
               </div>
               <div className="space-y-2">

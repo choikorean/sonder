@@ -1,5 +1,8 @@
 import { getAuthContext } from "@/lib/auth";
-import { getPromptProfile } from "@/lib/subscriber-context";
+import {
+  getPromptProfile,
+  getSubscriberContext,
+} from "@/lib/subscriber-context";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import {
   profileUpdateSchema,
@@ -13,13 +16,25 @@ export async function GET() {
   }
 
   const profile = await getPromptProfile(supabase);
-  return successResponse(profile);
+  const ctx = await getSubscriberContext(supabase);
+  return successResponse({
+    ...profile,
+    canEdit: ctx.capabilities.officeSignature,
+  });
 }
 
 export async function PATCH(request: Request) {
   const { supabase, user } = await getAuthContext();
   if (!user) {
     return errorResponse("로그인이 필요합니다.", 401);
+  }
+
+  const ctx = await getSubscriberContext(supabase);
+  if (!ctx.capabilities.officeSignature) {
+    return errorResponse(
+      "사무소 프로필 편집은 Pro 플랜 이상에서 이용할 수 있습니다.",
+      403,
+    );
   }
 
   let body: unknown;

@@ -47,29 +47,57 @@ export type HistoryData = {
   reports: ReportHistoryItem[];
 };
 
+function displayAuthorName(
+  name: string | null | undefined,
+  officeName: string | null | undefined,
+  email: string | null | undefined,
+) {
+  return name?.trim() || officeName?.trim() || email?.trim() || null;
+}
+
+async function loadAuthorNameMap(
+  supabase: SupabaseServer,
+  userIds: string[],
+): Promise<Map<string, string | null>> {
+  const uniqueIds = [...new Set(userIds)];
+  if (uniqueIds.length === 0) return new Map();
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, name, office_name, email")
+    .in("id", uniqueIds);
+
+  return new Map(
+    (data ?? []).map((profile) => [
+      profile.id,
+      displayAuthorName(profile.name, profile.office_name, profile.email),
+    ]),
+  );
+}
+
 export async function getHistory(
   supabase: SupabaseServer,
   options?: { retentionDays?: number; authorName?: string | null },
 ): Promise<HistoryData> {
   const cutoff = retentionCutoffIso(options?.retentionDays ?? 0);
-  const authorName = options?.authorName ?? null;
+  const fallbackAuthorName = options?.authorName ?? null;
 
   let requestsQuery = supabase
     .from("request_generations")
-    .select("id, tax_type, business_type, memo, result, created_at")
+    .select("id, user_id, tax_type, business_type, memo, result, created_at")
     .order("created_at", { ascending: false })
     .limit(LIMIT);
   let consultationsQuery = supabase
     .from("consultation_summaries")
     .select(
-      "id, summary, client_summary, required_documents, next_actions, next_guidance, transcript, audio_url, created_at",
+      "id, user_id, summary, client_summary, required_documents, next_actions, next_guidance, transcript, audio_url, created_at",
     )
     .order("created_at", { ascending: false })
     .limit(LIMIT);
   let reportsQuery = supabase
     .from("report_explanations")
     .select(
-      "id, tax_type, current_tax, previous_tax, change_reason, due_date, memo, result, created_at",
+      "id, user_id, tax_type, current_tax, previous_tax, change_reason, due_date, memo, result, created_at",
     )
     .order("created_at", { ascending: false })
     .limit(LIMIT);
@@ -86,6 +114,13 @@ export async function getHistory(
     reportsQuery,
   ]);
 
+  const userIds = [
+    ...(requests.data ?? []).map((row) => row.user_id),
+    ...(consultations.data ?? []).map((row) => row.user_id),
+    ...(reports.data ?? []).map((row) => row.user_id),
+  ];
+  const authorNames = await loadAuthorNameMap(supabase, userIds);
+
   return {
     requests: (requests.data ?? []).map((row) => ({
       id: row.id,
@@ -94,31 +129,34 @@ export async function getHistory(
       memo: row.memo,
       result: row.result,
       createdAt: row.created_at,
-      authorName,
+      authorName:
+        authorNames.get(row.user_id) ?? fallbackAuthorName,
     })),
     consultations: (consultations.data ?? []).map((row) => ({
       id: row.id,
       summary: row.summary,
       clientSummary: row.client_summary,
-        requiredDocuments: row.required_documents,
-        nextActions: row.next_actions,
-        nextGuidance: row.next_guidance,
-        transcript: row.transcript,
-        hasAudio: row.audio_url != null,
-        createdAt: row.created_at,
-        authorName,
-      })),
+      requiredDocuments: row.required_documents,
+      nextActions: row.next_actions,
+      nextGuidance: row.next_guidance,
+      transcript: row.transcript,
+      hasAudio: row.audio_url != null,
+      createdAt: row.created_at,
+      authorName:
+        authorNames.get(row.user_id) ?? fallbackAuthorName,
+    })),
     reports: (reports.data ?? []).map((row) => ({
       id: row.id,
       taxType: row.tax_type,
-        currentTax: row.current_tax,
-        previousTax: row.previous_tax,
-        changeReason: row.change_reason,
-        dueDate: row.due_date,
-        memo: row.memo,
-        result: row.result,
-        createdAt: row.created_at,
-        authorName,
-      })),
+      currentTax: row.current_tax,
+      previousTax: row.previous_tax,
+      changeReason: row.change_reason,
+      dueDate: row.due_date,
+      memo: row.memo,
+      result: row.result,
+      createdAt: row.created_at,
+      authorName:
+        authorNames.get(row.user_id) ?? fallbackAuthorName,
+    })),
   };
 }

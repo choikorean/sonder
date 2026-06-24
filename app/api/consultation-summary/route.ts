@@ -19,27 +19,27 @@ import { AUDIO_MAX_BYTES, AUDIO_ALLOWED_MIME_TYPES } from "@/lib/constants";
 import { getUsageStatus, recordUsage, usageLimitMessage } from "@/lib/usage";
 import { getSubscriberContext } from "@/lib/subscriber-context";
 import { getPhraseContentsForPrompt } from "@/lib/saved-phrases";
+import { toPlainClientText } from "@/lib/plain-text";
+import {
+  toConsultationApiResponse,
+  toConsultationDbInsert,
+  type ConsultationFields,
+} from "@/lib/consultation-output";
 
 const AUDIO_BUCKET = "consultation-audio";
-
-type SummaryFields = {
-  summary: string;
-  clientSummary: string;
-  requiredDocuments: string;
-  nextActions: string;
-  nextGuidance: string;
-};
 
 async function summarize(
   text: string,
   options: {
+    fullConsultationOutput: boolean;
     profile?: PromptProfile | null;
     phrases?: string[];
   },
-): Promise<{ fields: SummaryFields; tokens: number | null }> {
+): Promise<{ fields: ConsultationFields; tokens: number | null }> {
   const openai = getOpenAIClient();
   const { system, user } = buildConsultationSummaryPrompt({
     text,
+    fullConsultationOutput: options.fullConsultationOutput,
     profile: options.profile,
     phrases: options.phrases,
   });
@@ -57,13 +57,35 @@ async function summarize(
   const content = completion.choices[0]?.message?.content?.trim() ?? "{}";
   const parsed = JSON.parse(content) as Record<string, unknown>;
 
+  const summary = toPlainClientText(String(parsed.summary ?? "").trim());
+  const nextActions = toPlainClientText(String(parsed.nextActions ?? "").trim());
+
+  if (options.fullConsultationOutput) {
+    return {
+      fields: {
+        summary,
+        clientSummary: toPlainClientText(
+          String(parsed.clientSummary ?? "").trim(),
+        ),
+        requiredDocuments: toPlainClientText(
+          String(parsed.requiredDocuments ?? "").trim(),
+        ),
+        nextActions,
+        nextGuidance: toPlainClientText(
+          String(parsed.nextGuidance ?? "").trim(),
+        ),
+      },
+      tokens: completion.usage?.total_tokens ?? null,
+    };
+  }
+
   return {
     fields: {
-      summary: String(parsed.summary ?? "").trim(),
-      clientSummary: String(parsed.clientSummary ?? "").trim(),
-      requiredDocuments: String(parsed.requiredDocuments ?? "").trim(),
-      nextActions: String(parsed.nextActions ?? "").trim(),
-      nextGuidance: String(parsed.nextGuidance ?? "").trim(),
+      summary,
+      clientSummary: "",
+      requiredDocuments: "",
+      nextActions,
+      nextGuidance: "",
     },
     tokens: completion.usage?.total_tokens ?? null,
   };
@@ -93,7 +115,6 @@ export async function POST(request: NextRequest) {
   let audioUrl: string | null = null;
 
   if (contentType.includes("multipart/form-data")) {
-    // 오디오 또는 텍스트 입력
     let formData: FormData;
     try {
       formData = await request.formData();
@@ -158,7 +179,6 @@ export async function POST(request: NextRequest) {
       return errorResponse("상담 메모 또는 오디오 파일을 입력해 주세요.", 400);
     }
   } else {
-    // JSON 텍스트 입력
     let body: unknown;
     try {
       body = await request.json();
@@ -174,26 +194,33 @@ export async function POST(request: NextRequest) {
     sourceText = parsed.data.text;
   }
 
-  let fields: SummaryFields;
-  let tokensEstimated: number | null = null;
   const ctx = await getSubscriberContext(supabase);
-  const phrases = await getPhraseContentsForPrompt(
-    supabase,
-    ctx.capabilities,
-  );
+  const fullOutput = ctx.capabilities.fullConsultationOutput;
+  const phrases = await getPhraseContentsForPrompt(supabase, ctx.capabilities, {
+    organizationId: ctx.organization?.id,
+  });
+
+  let fields: ConsultationFields;
+  let tokensEstimated: number | null = null;
   try {
     const result = await summarize(sourceText, {
+      fullConsultationOutput: fullOutput,
       profile: ctx.capabilities.officeSignature ? ctx.profile : null,
       phrases,
     });
     fields = result.fields;
     tokensEstimated = result.tokens;
-    if (!fields.summary || !fields.clientSummary) {
+    if (!fields.summary) {
       throw new Error("요약 결과 누락");
+    }
+    if (fullOutput && !fields.clientSummary) {
+      throw new Error("고객 전달용 정리 누락");
     }
   } catch {
     return errorResponse("AI 요약에 실패했습니다. 잠시 후 다시 시도해 주세요.", 502);
   }
+
+  const dbRow = toConsultationDbInsert(fields, fullOutput);
 
   const { data: saved, error: dbError } = await supabase
     .from("consultation_summaries")
@@ -202,11 +229,7 @@ export async function POST(request: NextRequest) {
       audio_url: audioUrl,
       original_text: originalText,
       transcript,
-      summary: fields.summary,
-      client_summary: fields.clientSummary,
-      required_documents: fields.requiredDocuments || null,
-      next_actions: fields.nextActions || null,
-      next_guidance: fields.nextGuidance || null,
+      ...dbRow,
     })
     .select("id")
     .single();
@@ -217,14 +240,12 @@ export async function POST(request: NextRequest) {
 
   await recordUsage(supabase, user.id, "consultation_summary", tokensEstimated);
 
+  const responseFields = toConsultationApiResponse(fields, fullOutput);
+
   return successResponse({
     id: saved.id,
     transcript,
-    summary: fields.summary,
-    clientSummary: fields.clientSummary,
-    requiredDocuments: fields.requiredDocuments,
-    nextActions: fields.nextActions,
-    nextGuidance: fields.nextGuidance,
+    ...responseFields,
     copyFormats: ctx.capabilities.copyFormats,
   });
 }

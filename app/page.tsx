@@ -191,8 +191,8 @@ const TESTIMONIALS = [
 
 const FAQS = [
   {
-    q: "TaxFlow가 세무 상담을 대신하나요?",
-    a: "아닙니다. TaxFlow는 세무사의 판단을 대신하지 않습니다. 세무사가 검토할 문서 초안을 만들어주는 도구입니다.",
+    q: "TaxFlo가 세무 상담을 대신하나요?",
+    a: "아닙니다. TaxFlo는 세무사의 판단을 대신하지 않습니다. 세무사가 검토할 문서 초안을 만들어주는 도구입니다.",
   },
   {
     q: "홈택스나 세무 프로그램과 연동되나요?",
@@ -208,7 +208,7 @@ const FAQS = [
   },
   {
     q: "AI가 틀린 내용을 작성하면 어떻게 하나요?",
-    a: "모든 결과물은 초안입니다. 발송 전 세무사가 반드시 검토해야 합니다. TaxFlow는 최종 판단이나 세무 자문을 제공하지 않습니다.",
+    a: "모든 결과물은 초안입니다. 발송 전 세무사가 반드시 검토해야 합니다. TaxFlo는 최종 판단이나 세무 자문을 제공하지 않습니다.",
   },
   {
     q: "어떤 세무사에게 적합한가요?",
@@ -221,7 +221,7 @@ export default function Home() {
     <div className="flex flex-1 flex-col">
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
-          <span className="text-lg font-bold tracking-tight">TaxFlow</span>
+          <span className="text-lg font-bold tracking-tight">TaxFlo</span>
           <nav className="hidden items-center gap-1 md:flex">
             <a
               href="#features"
@@ -268,9 +268,9 @@ export default function Home() {
             다시 쫓아다니고 계신가요?
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            TaxFlow는 자료 요청문, 누락자료 재요청문, 상담 정리, 신고 결과
+            TaxFlo는 자료 요청문, 누락자료 재요청문, 상담 정리, 신고 결과
             설명문을 세무사 업무 흐름에 맞게 자동 생성합니다. 세법 판단은
-            세무사가 하고, 반복 문구 작성은 TaxFlow가 초안을 만듭니다.
+            세무사가 하고, 반복 문구 작성은 TaxFlo가 초안을 만듭니다.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
@@ -358,7 +358,7 @@ export default function Home() {
           <div className="mx-auto w-full max-w-5xl px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-2xl text-center">
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                TaxFlow가 반복 문구의 초안을 만들어드립니다.
+                TaxFlo가 반복 문구의 초안을 만들어드립니다.
               </h2>
               <p className="mt-3 text-muted-foreground">
                 세법 판단을 대신하지 않습니다. 세무사가 이미 알고 있는 내용을
@@ -430,7 +430,7 @@ export default function Home() {
           <div className="grid gap-5 md:grid-cols-2">
             <div className="rounded-xl border border-border p-6">
               <p className="text-sm font-medium text-muted-foreground">
-                TaxFlow 사용 전
+                TaxFlo 사용 전
               </p>
               <p className="mt-1 font-semibold">
                 신고 시즌마다 반복됩니다.
@@ -446,7 +446,7 @@ export default function Home() {
             </div>
             <div className="rounded-xl border border-foreground bg-muted/30 p-6 ring-1 ring-foreground/10">
               <p className="text-sm font-medium text-muted-foreground">
-                TaxFlow 사용 후
+                TaxFlo 사용 후
               </p>
               <p className="mt-1 font-semibold">
                 반복 문구는 초안부터 시작합니다.
@@ -462,7 +462,7 @@ export default function Home() {
             </div>
           </div>
           <p className="mx-auto mt-8 max-w-2xl text-center text-muted-foreground">
-            세무사는 판단에 집중하고, TaxFlow는 반복 작성 시간을 줄입니다.
+            세무사는 판단에 집중하고, TaxFlo는 반복 작성 시간을 줄입니다.
           </p>
         </section>
 
@@ -525,7 +525,7 @@ export default function Home() {
             </h2>
             <div className="mt-10 grid gap-5 md:grid-cols-2">
               <div className="rounded-xl bg-background p-6 ring-1 ring-foreground/10">
-                <p className="font-semibold">TaxFlow가 하지 않는 것</p>
+                <p className="font-semibold">TaxFlo가 하지 않는 것</p>
                 <ul className="mt-4 space-y-2">
                   {TRUST_NOT.map((item) => (
                     <li key={item} className="flex items-start gap-2 text-sm">
@@ -536,7 +536,7 @@ export default function Home() {
                 </ul>
               </div>
               <div className="rounded-xl bg-background p-6 ring-1 ring-foreground/10">
-                <p className="font-semibold">TaxFlow가 하는 것</p>
+                <p className="font-semibold">TaxFlo가 하는 것</p>
                 <ul className="mt-4 space-y-2">
                   {TRUST_DO.map((item) => (
                     <li key={item} className="flex items-start gap-2 text-sm">
@@ -684,7 +684,7 @@ export default function Home() {
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
               자료 요청문, 누락자료 재요청, 상담 정리, 신고 결과 설명문. 반복되는
-              문서 작성은 TaxFlow로 줄이세요. 세무사는 판단에 집중하고, TaxFlow는
+              문서 작성은 TaxFlo로 줄이세요. 세무사는 판단에 집중하고, TaxFlo는
               반복 커뮤니케이션 초안을 만듭니다.
             </p>
             <Link
@@ -702,7 +702,7 @@ export default function Home() {
 
       <footer className="border-t border-border">
         <div className="mx-auto w-full max-w-5xl space-y-2 px-4 py-8 sm:px-6">
-          <p className="text-sm font-semibold">TaxFlow</p>
+          <p className="text-sm font-semibold">TaxFlo</p>
           <p className="text-xs text-muted-foreground">{REVIEW_DISCLAIMER}</p>
           <p className="text-xs text-muted-foreground">
             본 서비스는 세법 판단을 제공하지 않습니다.

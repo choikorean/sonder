@@ -167,7 +167,7 @@ Pro 카드에는 다음 배지를 붙입니다.
 
 ```text
 안전한 카드 등록을 위해 나이스페이 결제창으로 이동합니다.
-TaxFlow는 카드번호를 저장하지 않습니다.
+TaxFlo는 카드번호를 저장하지 않습니다.
 ```
 
 ---
@@ -504,9 +504,9 @@ BID
 요금제별 상품명:
 
 ```text
-TaxFlow Starter 월 구독
-TaxFlow Pro 월 구독
-TaxFlow Team 월 구독
+TaxFlo Starter 월 구독
+TaxFlo Pro 월 구독
+TaxFlo Team 월 구독
 ```
 
 결제금액:

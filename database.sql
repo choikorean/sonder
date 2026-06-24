@@ -1,5 +1,5 @@
 -- database.sql
--- TaxFlow Supabase schema
+-- TaxFlo Supabase schema
 -- Apply this in Supabase SQL editor.
 
 -- Enable extensions

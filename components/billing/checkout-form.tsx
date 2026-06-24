@@ -169,7 +169,7 @@ export function CheckoutForm({ planId, cycle, amount }: Props) {
       <section className="rounded-xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
         안전한 카드 등록을 위해 나이스페이 결제창으로 이동합니다.
         <br />
-        TaxFlow는 카드번호를 저장하지 않습니다.
+        TaxFlo는 카드번호를 저장하지 않습니다.
       </section>
 
       <form

@@ -14,37 +14,61 @@ export type SavedPhrase = {
 export async function listSavedPhrases(
   supabase: SupabaseServer,
   capabilities: PlanCapabilities,
+  options?: { organizationId?: string | null; userId?: string | null },
 ): Promise<SavedPhrase[]> {
   if (!capabilities.savedPhrases && !capabilities.officeSharedPhrases) {
     return [];
   }
 
-  let query = supabase
-    .from("saved_phrases")
-    .select("id, label, content, scope, created_at")
-    .order("created_at", { ascending: false });
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = options?.userId ?? auth.user?.id;
+  if (!userId) return [];
 
-  if (capabilities.officeSharedPhrases) {
-    query = query.in("scope", ["personal", "office"]);
-  } else {
-    query = query.eq("scope", "personal");
+  const queries = [];
+
+  if (capabilities.savedPhrases) {
+    queries.push(
+      supabase
+        .from("saved_phrases")
+        .select("id, label, content, scope, created_at")
+        .eq("scope", "personal")
+        .eq("user_id", userId),
+    );
   }
 
-  const { data } = await query;
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    label: row.label,
-    content: row.content,
-    scope: row.scope as "personal" | "office",
-    createdAt: row.created_at,
-  }));
+  if (capabilities.officeSharedPhrases && options?.organizationId) {
+    queries.push(
+      supabase
+        .from("saved_phrases")
+        .select("id, label, content, scope, created_at")
+        .eq("scope", "office")
+        .eq("organization_id", options.organizationId),
+    );
+  }
+
+  const results = await Promise.all(queries);
+  const rows = results.flatMap((result) => result.data ?? []);
+
+  return rows
+    .map((row) => ({
+      id: row.id,
+      label: row.label,
+      content: row.content,
+      scope: row.scope as "personal" | "office",
+      createdAt: row.created_at,
+    }))
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
 }
 
 export async function getPhraseContentsForPrompt(
   supabase: SupabaseServer,
   capabilities: PlanCapabilities,
+  options?: { organizationId?: string | null; userId?: string | null },
   limit = 5,
 ): Promise<string[]> {
-  const phrases = await listSavedPhrases(supabase, capabilities);
+  const phrases = await listSavedPhrases(supabase, capabilities, options);
   return phrases.slice(0, limit).map((p) => p.content);
 }

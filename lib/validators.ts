@@ -134,6 +134,24 @@ export const savedPhraseSchema = z.object({
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 export type SavedPhraseInput = z.infer<typeof savedPhraseSchema>;
 
+export const orgInviteSchema = z.object({
+  email: z
+    .string()
+    .email("올바른 이메일 형식이 아닙니다.")
+    .max(200)
+    .nullish(),
+});
+
+export const orgInviteAcceptSchema = z.object({
+  token: z
+    .string()
+    .trim()
+    .min(10, "초대 토큰이 올바르지 않습니다."),
+});
+
+export type OrgInviteInput = z.infer<typeof orgInviteSchema>;
+export type OrgInviteAcceptInput = z.infer<typeof orgInviteAcceptSchema>;
+
 /** ZodError에서 사용자에게 보여줄 첫 번째 한국어 메시지를 추출합니다. */
 export function firstZodErrorMessage(error: ZodError): string {
   return error.issues[0]?.message ?? "입력값이 올바르지 않습니다.";

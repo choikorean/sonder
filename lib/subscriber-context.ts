@@ -2,8 +2,10 @@ import type { createClient } from "@/lib/supabase/server";
 import { FREE_TRIAL, type Plan, type PlanId } from "@/lib/plans";
 import {
   getPlanCapabilities,
+  needsPromptProfile,
   type PlanCapabilities,
 } from "@/lib/plan-capabilities";
+import { getOrganizationContext, type OrganizationContext } from "@/lib/org";
 import { getSubscription, type CurrentSubscription } from "@/lib/subscription";
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
@@ -19,12 +21,16 @@ export type SubscriberContext = {
   subscription: CurrentSubscription;
   /** 한도 계산에 쓰는 플랜 (체험 중 free → free 한도) */
   limitPlan: Plan;
-  /** 기능 제공에 쓰는 플랜 id */
+  /** 기능 제공에 쓰는 플랜 id (체험 중에는 pro 수준 capability) */
   featurePlanId: PlanId;
   capabilities: PlanCapabilities;
+  /** 생성 한도·보관 일수는 limitPlan / retentionDays / monthlyLimit 참고 */
   retentionDays: number;
   monthlyLimit: number;
+  /** officeSignature가 true일 때만 로드 (사무소명·담당자명 삽입용) */
   profile: PromptProfile | null;
+  /** Team 멀티유저 조직 (없으면 null) */
+  organization: OrganizationContext | null;
 };
 
 export async function getPromptProfile(
@@ -57,6 +63,7 @@ export async function getPromptProfile(
 export async function getSubscriberContext(
   supabase: SupabaseServer,
 ): Promise<SubscriberContext> {
+  const { data: auth } = await supabase.auth.getUser();
   const subscription = await getSubscription(supabase);
   const capabilities = getPlanCapabilities(subscription.effectivePlanId, {
     isTrialing: subscription.isTrialing,
@@ -70,10 +77,13 @@ export async function getSubscriberContext(
     ? FREE_TRIAL.retentionDays
     : limitPlan.retentionDays;
 
-  const profile =
-    capabilities.officeSignature || capabilities.savedPhrases
-      ? await getPromptProfile(supabase)
-      : null;
+  const profile = needsPromptProfile(capabilities)
+    ? await getPromptProfile(supabase)
+    : null;
+
+  const organization = auth.user
+    ? await getOrganizationContext(supabase, auth.user.id)
+    : null;
 
   return {
     subscription,
@@ -85,5 +95,6 @@ export async function getSubscriberContext(
     retentionDays,
     monthlyLimit,
     profile,
+    organization,
   };
 }

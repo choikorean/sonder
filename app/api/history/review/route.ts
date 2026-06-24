@@ -1,7 +1,7 @@
 import { getAuthContext } from "@/lib/auth";
 import { buildReviewSummary } from "@/lib/copy-formats";
 import { getHistory } from "@/lib/history";
-import { getPromptProfile, getSubscriberContext } from "@/lib/subscriber-context";
+import { getSubscriberContext } from "@/lib/subscriber-context";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 export async function GET() {
@@ -18,13 +18,10 @@ export async function GET() {
     );
   }
 
-  const profile = await getPromptProfile(supabase);
-  const authorName = profile.contactName ?? profile.officeName;
   const history = await getHistory(supabase, {
     retentionDays: ctx.retentionDays,
-    authorName,
   });
-  const summary = buildReviewSummary(history, authorName);
+  const summary = buildReviewSummary(history);
 
   return successResponse({ summary });
 }

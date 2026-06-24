@@ -1,6 +1,6 @@
 # tasks.md
 
-# TaxFlow MVP Development Tasks
+# TaxFlo MVP Development Tasks
 
 This file is optimized for Cursor + Claude Code execution. Complete tasks in order. Do not skip phases.
 

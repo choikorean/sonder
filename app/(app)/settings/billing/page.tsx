@@ -2,9 +2,12 @@ import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
 import { BillingSubNav } from "@/components/billing/billing-sub-nav";
+import { PrioritySupportCard } from "@/components/support/priority-support-card";
 import { createClient } from "@/lib/supabase/server";
 import { getBillingOverview } from "@/lib/billing/queries";
 import { formatBillingDate } from "@/lib/billing/helpers";
+import { getSubscriberContext } from "@/lib/subscriber-context";
+import { getSupportConfig, getSupportTier } from "@/lib/support";
 import { formatKrw, planPrice } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
@@ -14,9 +17,18 @@ export const metadata = {
 
 export default async function SettingsBillingPage() {
   const supabase = await createClient();
-  const overview = await getBillingOverview(supabase);
+  const [overview, ctx] = await Promise.all([
+    getBillingOverview(supabase),
+    getSubscriberContext(supabase),
+  ]);
   const { subscription, billingKey, statusLabel } = overview;
   const monthlyAmount = planPrice(subscription.plan, subscription.billingCycle);
+  const support = getSupportConfig();
+  const supportTier = getSupportTier({
+    prioritySupport: ctx.capabilities.prioritySupport,
+    planId: ctx.subscription.planId,
+    isTrialing: ctx.subscription.isTrialing,
+  });
 
   return (
     <div className="space-y-8">
@@ -28,6 +40,14 @@ export default async function SettingsBillingPage() {
       </div>
 
       <BillingSubNav />
+
+      {supportTier !== "none" && (
+        <PrioritySupportCard
+          tier={supportTier}
+          priorityEmail={support.priorityEmail}
+          teamOnboardingUrl={support.teamOnboardingUrl}
+        />
+      )}
 
       <section className="rounded-xl border border-border p-6">
         <dl className="grid gap-4 text-sm sm:grid-cols-2">

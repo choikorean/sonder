@@ -12,13 +12,35 @@ function monthStartISO(): string {
   ).toISOString();
 }
 
+async function resolveUsageUserIds(
+  supabase: SupabaseServer,
+): Promise<string[]> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return [];
+
+  const ctx = await getSubscriberContext(supabase);
+  if (
+    ctx.organization &&
+    ctx.subscription.effectivePlanId === "team" &&
+    ctx.subscription.isActive
+  ) {
+    return ctx.organization.memberUserIds;
+  }
+
+  return [auth.user.id];
+}
+
 /** 이번 달(UTC 월초 기준) 전체 기능 합산 생성 횟수 */
 export async function getMonthlyUsageTotal(
   supabase: SupabaseServer,
 ): Promise<number> {
+  const userIds = await resolveUsageUserIds(supabase);
+  if (userIds.length === 0) return 0;
+
   const { count } = await supabase
     .from("usage_events")
     .select("id", { count: "exact", head: true })
+    .in("user_id", userIds)
     .gte("created_at", monthStartISO());
   return count ?? 0;
 }
@@ -33,14 +55,19 @@ const EMPTY_BY_FEATURE: Record<Feature, number> = {
 export async function getMonthlyUsageByFeature(
   supabase: SupabaseServer,
 ): Promise<Record<Feature, number>> {
+  const userIds = await resolveUsageUserIds(supabase);
+  if (userIds.length === 0) return { ...EMPTY_BY_FEATURE };
+
   const { data } = await supabase
-    .from("current_month_usage")
-    .select("feature, usage_count");
+    .from("usage_events")
+    .select("feature")
+    .in("user_id", userIds)
+    .gte("created_at", monthStartISO());
 
   const result = { ...EMPTY_BY_FEATURE };
   for (const row of data ?? []) {
     if (row.feature && row.feature in result) {
-      result[row.feature as Feature] = row.usage_count ?? 0;
+      result[row.feature as Feature] += 1;
     }
   }
   return result;
@@ -56,7 +83,7 @@ export type UsageStatus = {
 
 /**
  * 현재 사용자의 활성 플랜 한도 대비 이번 달 사용량을 반환합니다.
- * 한도 검사는 항상 서버에서 이 함수를 통해 수행합니다.
+ * Team 플랜은 사무소 구성원 사용량을 합산합니다.
  */
 export async function getUsageStatus(
   supabase: SupabaseServer,

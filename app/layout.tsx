@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "TaxFlow | 세무사 고객 커뮤니케이션 자동화",
-    template: "%s | TaxFlow",
+    default: "TaxFlo | 세무사 고객 커뮤니케이션 자동화",
+    template: "%s | TaxFlo",
   },
   description:
     "세무사를 위한 자료 요청문, 상담 요약, 신고 결과 설명문 자동 생성 서비스입니다.",

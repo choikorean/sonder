@@ -111,7 +111,7 @@ export function AuthForm() {
         </CardTitle>
         <CardDescription>
           {mode === "login"
-            ? "TaxFlow 계정으로 로그인하세요."
+            ? "TaxFlo 계정으로 로그인하세요."
             : "세무사 업무 자동화를 지금 시작하세요."}
         </CardDescription>
       </CardHeader>

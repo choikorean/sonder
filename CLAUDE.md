@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-# TaxFlow Development Rules
+# TaxFlo Development Rules
 
-You are building TaxFlow, a Korean B2B SaaS for tax accountants. The product helps tax accountants reduce repetitive client communication work.
+You are building TaxFlo, a Korean B2B SaaS for tax accountants. The product helps tax accountants reduce repetitive client communication work.
 
 The app does not provide legal tax judgment, tax filing automation, or final professional advice. It generates drafts that the tax accountant must review before sending to clients.
 
@@ -10,7 +10,7 @@ The app does not provide legal tax judgment, tax filing automation, or final pro
 
 ## 1. Product Context
 
-TaxFlow MVP has three core features:
+TaxFlo MVP has three core features:
 
 1. Client document request generation
 2. Consultation summary generation

@@ -1,6 +1,6 @@
 import { getAuthContext } from "@/lib/auth";
 import { getHistory } from "@/lib/history";
-import { getPromptProfile, getSubscriberContext } from "@/lib/subscriber-context";
+import { getSubscriberContext } from "@/lib/subscriber-context";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 export async function GET() {
@@ -10,11 +10,8 @@ export async function GET() {
   }
 
   const ctx = await getSubscriberContext(supabase);
-  const profile = await getPromptProfile(supabase);
-  const authorName = profile.contactName ?? profile.officeName;
   const data = await getHistory(supabase, {
     retentionDays: ctx.retentionDays,
-    authorName,
   });
   return successResponse({
     ...data,
@@ -22,6 +19,7 @@ export async function GET() {
     capabilities: {
       reviewSummary: ctx.capabilities.reviewSummary,
       copyFormats: ctx.capabilities.copyFormats,
+      fullConsultationOutput: ctx.capabilities.fullConsultationOutput,
     },
   });
 }

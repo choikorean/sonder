@@ -31,6 +31,11 @@ export const FREE_TRIAL = {
   retentionDays: 14,
 } as const;
 
+/**
+ * 플랜별 마케팅 기능 목록(features)은 lib/plan-capabilities.ts의
+ * PlanCapabilities 및 monthlyLimit / retentionDays / seats와 1:1 대응합니다.
+ * 실제 enforce는 getSubscriberContext() + 각 API에서 수행합니다.
+ */
 export const PLANS: Record<PlanId, Plan> = {
   free: {
     id: "free",
@@ -59,8 +64,8 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "starter",
     name: "Starter",
     tagline: "1인 체험용",
-    monthlyPrice: 49000,
-    yearlyPrice: 490000,
+    monthlyPrice: 9900,
+    yearlyPrice: 99000,
     monthlyLimit: 100,
     seats: 1,
     retentionDays: 30,
@@ -80,8 +85,8 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "pro",
     name: "Pro",
     tagline: "개인 세무사 추천",
-    monthlyPrice: 99000,
-    yearlyPrice: 990000,
+    monthlyPrice: 29000,
+    yearlyPrice: 290000,
     monthlyLimit: 500,
     seats: 1,
     retentionDays: 365,
@@ -104,8 +109,8 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "team",
     name: "Team",
     tagline: "세무법인·소형 사무소",
-    monthlyPrice: 249000,
-    yearlyPrice: 2490000,
+    monthlyPrice: 99000,
+    yearlyPrice: 990000,
     monthlyLimit: 2000,
     seats: 5,
     retentionDays: 365,

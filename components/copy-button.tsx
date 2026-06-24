@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { toPlainClientText } from "@/lib/plain-text";
 
 export function CopyButton({
   text,
@@ -18,7 +19,7 @@ export function CopyButton({
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(toPlainClientText(text));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

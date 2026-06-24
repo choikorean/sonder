@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/card";
 import { CopyFormatActions } from "@/components/copy-format-actions";
 import { ReviewDisclaimer } from "@/components/review-disclaimer";
+import { toPlainClientText } from "@/lib/plain-text";
 
 export function GeneratedOutput({
   title = "생성 결과",
@@ -19,13 +20,15 @@ export function GeneratedOutput({
   copyFormats?: boolean;
   emailSubject?: string;
 }) {
+  const plainContent = toPlainClientText(content);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardAction>
           <CopyFormatActions
-            text={content}
+            text={plainContent}
             copyFormats={copyFormats}
             emailSubject={emailSubject}
           />
@@ -33,7 +36,7 @@ export function GeneratedOutput({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="rounded-md bg-muted/40 p-4 text-sm leading-relaxed whitespace-pre-wrap break-words">
-          {content}
+          {plainContent}
         </div>
         <ReviewDisclaimer />
       </CardContent>
