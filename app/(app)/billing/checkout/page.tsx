@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { CheckoutForm } from "@/components/billing/checkout-form";
+import { createClient } from "@/lib/supabase/server";
+import { resolveCanManageBilling } from "@/lib/billing/access";
 import {
   getPlan,
   isBillingCycle,
@@ -20,6 +22,15 @@ type Props = {
 };
 
 export default async function BillingCheckoutPage({ searchParams }: Props) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || !(await resolveCanManageBilling(supabase, user.id))) {
+    redirect("/billing");
+  }
+
   const params = await searchParams;
   const planRaw = params.plan ?? "pro";
   const cycleRaw = params.cycle ?? "monthly";

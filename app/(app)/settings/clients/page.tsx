@@ -3,8 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriberContext } from "@/lib/subscriber-context";
 import { ClientsSettingsForm } from "@/components/settings/clients-settings-form";
-import { SETTINGS_LINKS } from "@/lib/settings-nav";
-import { cn } from "@/lib/utils";
+import { SettingsNav } from "@/components/settings/settings-nav";
 
 export const metadata = {
   title: "고객 관리",
@@ -26,22 +25,10 @@ export default async function SettingsClientsPage() {
         </p>
       </div>
 
-      <nav className="flex flex-wrap gap-2">
-        {SETTINGS_LINKS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-muted",
-              item.href === "/settings/clients"
-                ? "bg-muted font-medium text-foreground"
-                : "text-muted-foreground",
-            )}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      <SettingsNav
+        activeHref="/settings/clients"
+        canManageBilling={ctx.canManageBilling}
+      />
 
       <ClientsSettingsForm
         canManage={canManage}

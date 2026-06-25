@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getSubscription } from "@/lib/subscription";
+import { getSubscriberContext } from "@/lib/subscriber-context";
 import { getUsageStatus } from "@/lib/usage";
 import { PlanSelector } from "@/components/billing/plan-selector";
 import {
@@ -13,10 +13,9 @@ export const metadata = {
 
 export default async function BillingPage() {
   const supabase = await createClient();
-  const [subscription, usage] = await Promise.all([
-    getSubscription(supabase),
-    getUsageStatus(supabase),
-  ]);
+  const ctx = await getSubscriberContext(supabase);
+  const { subscription } = ctx;
+  const usage = await getUsageStatus(supabase);
 
   const percent =
     usage.limit > 0
@@ -61,14 +60,16 @@ export default async function BillingPage() {
           )}
         </div>
 
-        <div className="mt-4">
-          <a
-            href="/settings/billing"
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-          >
-            결제 및 구독 관리 →
-          </a>
-        </div>
+        {ctx.canManageBilling && (
+          <div className="mt-4">
+            <a
+              href="/settings/billing"
+              className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+            >
+              결제 및 구독 관리 →
+            </a>
+          </div>
+        )}
 
         <div className="mt-6 space-y-2">
           <div className="flex items-center justify-between text-sm">
@@ -90,11 +91,18 @@ export default async function BillingPage() {
         </div>
       </section>
 
-      <PlanSelector
-        currentPlanId={subscription.effectivePlanId}
-        isActive={subscription.isActive}
-        canStartTrial={!subscription.isActive}
-      />
+      {ctx.canManageBilling ? (
+        <PlanSelector
+          currentPlanId={subscription.effectivePlanId}
+          isActive={subscription.isActive}
+          canStartTrial={!subscription.isActive}
+        />
+      ) : (
+        <section className="rounded-xl border border-border bg-muted/30 p-6 text-sm text-muted-foreground">
+          요금제 변경과 결제 관리는 사무소 소유자만 할 수 있습니다. 현재 플랜과
+          사용량은 위에서 확인할 수 있습니다.
+        </section>
+      )}
     </div>
   );
 }

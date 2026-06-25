@@ -4,3 +4,9 @@ export const SETTINGS_LINKS = [
   { href: "/settings/team", label: "팀 관리" },
   { href: "/settings/billing", label: "결제 및 구독" },
 ] as const;
+
+export function getSettingsLinks(canManageBilling: boolean) {
+  return SETTINGS_LINKS.filter(
+    (item) => canManageBilling || item.href !== "/settings/billing",
+  );
+}

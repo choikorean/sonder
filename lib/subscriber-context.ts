@@ -6,6 +6,7 @@ import {
   type PlanCapabilities,
 } from "@/lib/plan-capabilities";
 import { getOrganizationContext, type OrganizationContext } from "@/lib/org";
+import { canManageBilling } from "@/lib/billing/access";
 import { getSubscription, type CurrentSubscription } from "@/lib/subscription";
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
@@ -31,6 +32,8 @@ export type SubscriberContext = {
   profile: PromptProfile | null;
   /** Team 멀티유저 조직 (없으면 null) */
   organization: OrganizationContext | null;
+  /** 결제·구독 변경 가능 여부 (Team 팀원은 false) */
+  canManageBilling: boolean;
 };
 
 export async function getPromptProfile(
@@ -96,5 +99,6 @@ export async function getSubscriberContext(
     monthlyLimit,
     profile,
     organization,
+    canManageBilling: canManageBilling(organization),
   };
 }

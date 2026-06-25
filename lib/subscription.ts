@@ -44,7 +44,7 @@ export type CurrentSubscription = {
   isTrialing: boolean;
 };
 
-function mapSubscriptionRow(
+export function mapSubscriptionRow(
   data: SubscriptionRow | null | undefined,
 ): CurrentSubscription {
   const status = data?.status ?? "inactive";

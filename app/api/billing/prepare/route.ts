@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 
-import { getAuthContext } from "@/lib/auth";
+import { requireBillingManager } from "@/lib/billing/access";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import {
   billingPrepareSchema,
@@ -9,10 +9,9 @@ import {
 import { prepareNicepayCheckout } from "@/lib/billing/prepare";
 
 export async function POST(request: NextRequest) {
-  const { supabase, user } = await getAuthContext();
-  if (!user) {
-    return errorResponse("로그인이 필요합니다.", 401);
-  }
+  const auth = await requireBillingManager();
+  if (!auth.ok) return auth.response;
+  const { supabase, user } = auth;
 
   let body: unknown;
   try {

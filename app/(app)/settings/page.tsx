@@ -1,11 +1,8 @@
-import Link from "next/link";
-
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriberContext } from "@/lib/subscriber-context";
 import { ProfileSettingsForm } from "@/components/settings/profile-settings-form";
 import { PhrasesSettingsForm } from "@/components/settings/phrases-settings-form";
-import { SETTINGS_LINKS } from "@/lib/settings-nav";
-import { cn } from "@/lib/utils";
+import { SettingsNav } from "@/components/settings/settings-nav";
 
 export const metadata = {
   title: "설정",
@@ -27,22 +24,10 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <nav className="flex gap-2">
-        {SETTINGS_LINKS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-muted",
-              item.href === "/settings"
-                ? "bg-muted font-medium text-foreground"
-                : "text-muted-foreground",
-            )}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      <SettingsNav
+        activeHref="/settings"
+        canManageBilling={ctx.canManageBilling}
+      />
 
       <div className="space-y-6">
         <ProfileSettingsForm canEdit={canEditProfile} />

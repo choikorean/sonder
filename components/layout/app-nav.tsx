@@ -17,10 +17,22 @@ const NAV_ITEMS = [
   { href: "/history", label: "생성 내역" },
   { href: "/settings", label: "설정" },
   { href: "/billing", label: "요금제" },
-  { href: "/settings/billing", label: "결제 및 구독" },
+  { href: "/settings/billing", label: "결제 및 구독", requiresBillingManager: true },
 ] as const;
 
-export function AppNav({ email }: { email: string }) {
+function getNavItems(canManageBilling: boolean) {
+  return NAV_ITEMS.filter(
+    (item) => canManageBilling || !("requiresBillingManager" in item && item.requiresBillingManager),
+  );
+}
+
+export function AppNav({
+  email,
+  canManageBilling,
+}: {
+  email: string;
+  canManageBilling: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -38,6 +50,8 @@ export function AppNav({ email }: { email: string }) {
     router.refresh();
   }
 
+  const navItems = getNavItems(canManageBilling);
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-2 px-4 sm:gap-3 sm:px-6">
@@ -53,7 +67,7 @@ export function AppNav({ email }: { email: string }) {
           style={{ scrollbarWidth: "none" }}
           aria-label="주요 메뉴"
         >
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -101,7 +115,7 @@ export function AppNav({ email }: { email: string }) {
       {open && (
         <div className="border-t border-border lg:hidden">
           <nav className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-4 py-3 sm:px-6">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
