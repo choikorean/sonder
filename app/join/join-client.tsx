@@ -15,7 +15,11 @@ import {
 type PreviewResult =
   | {
       success: true;
-      data: { organizationName: string; expiresAt: string };
+      data: {
+        organizationName: string;
+        expiresAt: string;
+        invitedEmail: string | null;
+      };
     }
   | { success: false; error: string };
 
@@ -87,8 +91,8 @@ export default function JoinOrganizationPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
-      <div className="space-y-1">
+    <div className="w-full max-w-lg space-y-6">
+      <div className="space-y-1 text-center sm:text-left">
         <h1 className="text-2xl font-bold tracking-tight">사무소 초대</h1>
         <p className="text-sm text-muted-foreground">
           팀 초대 링크를 통해 사무소에 합류합니다.

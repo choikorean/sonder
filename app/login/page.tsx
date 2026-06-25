@@ -22,9 +22,6 @@ export default function LoginPage() {
       >
         <AuthForm />
       </Suspense>
-      <p className="mt-6 max-w-md text-center text-xs text-muted-foreground">
-        AI가 생성한 초안입니다. 고객 발송 전 세무사가 반드시 검토해야 합니다.
-      </p>
     </main>
   );
 }

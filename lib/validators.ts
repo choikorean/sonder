@@ -189,9 +189,9 @@ export type SavedPhraseInput = z.infer<typeof savedPhraseSchema>;
 export const orgInviteSchema = z.object({
   email: z
     .string()
+    .trim()
     .email("올바른 이메일 형식이 아닙니다.")
-    .max(200)
-    .nullish(),
+    .max(200, "이메일은 200자 이내로 입력해 주세요."),
 });
 
 export const orgInviteAcceptSchema = z.object({

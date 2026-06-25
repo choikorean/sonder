@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth-errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -22,17 +23,42 @@ import {
 
 type Mode = "login" | "signup" | "reset-request";
 
+type InviteAcceptResult =
+  | { success: true; data: { organizationId: string } }
+  | { success: false; error: string };
+
+function getSafeNextPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/dashboard";
+  }
+  return value;
+}
+
 function getPasswordResetRedirectUrl() {
   return `${window.location.origin}/auth/callback?next=/login/reset-password`;
+}
+
+async function acceptInvite(token: string): Promise<InviteAcceptResult> {
+  const res = await fetch("/api/org/invites/accept", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  return res.json();
 }
 
 export function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite");
+  const nextPath = inviteToken
+    ? `/join?token=${encodeURIComponent(inviteToken)}`
+    : getSafeNextPath(searchParams.get("next"));
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [inviteEmailLocked, setInviteEmailLocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -41,12 +67,54 @@ export function AuthForm() {
     if (searchParams.get("error") === "auth_callback") {
       setError(AUTH_CALLBACK_ERROR_MESSAGE);
     }
-  }, [searchParams]);
+    if (searchParams.get("mode") === "signup" || inviteToken) {
+      setMode("signup");
+    }
+  }, [searchParams, inviteToken]);
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    const token = inviteToken;
+
+    async function loadInviteEmail() {
+      try {
+        const res = await fetch(
+          `/api/org/invites/preview?token=${encodeURIComponent(token)}`,
+        );
+        const json = await res.json();
+        if (json.success && json.data.invitedEmail) {
+          setEmail(json.data.invitedEmail);
+          setInviteEmailLocked(true);
+        }
+      } catch {
+        // 미리보기 실패 시 사용자가 직접 입력
+      }
+    }
+
+    void loadInviteEmail();
+  }, [inviteToken]);
 
   function switchMode(next: Mode) {
     setMode(next);
     setError(null);
     setMessage(null);
+  }
+
+  async function finishAuthWithInvite() {
+    if (!inviteToken) {
+      router.push(nextPath);
+      router.refresh();
+      return;
+    }
+
+    const acceptResult = await acceptInvite(inviteToken);
+    if (acceptResult.success) {
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    setError(acceptResult.error);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -77,7 +145,7 @@ export function AuthForm() {
           password,
           options: {
             data: { name },
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
           },
         });
         if (signUpError) throw signUpError;
@@ -87,11 +155,12 @@ export function AuthForm() {
         } = await supabase.auth.getSession();
 
         if (session) {
-          router.push("/dashboard");
-          router.refresh();
+          await finishAuthWithInvite();
         } else {
           setMessage(
-            "확인 이메일을 보냈습니다. 메일함에서 인증을 완료한 뒤 로그인해 주세요.",
+            inviteToken
+              ? "확인 이메일을 보냈습니다. 메일함에서 인증을 완료하면 사무소에 자동으로 가입됩니다."
+              : "확인 이메일을 보냈습니다. 메일함에서 인증을 완료한 뒤 로그인해 주세요.",
           );
         }
       } else {
@@ -101,8 +170,7 @@ export function AuthForm() {
         });
         if (signInError) throw signInError;
 
-        router.push("/dashboard");
-        router.refresh();
+        await finishAuthWithInvite();
       }
     } catch (err) {
       setError(translateAuthError(getAuthErrorMessage(err)));
@@ -115,21 +183,31 @@ export function AuthForm() {
     mode === "login"
       ? "로그인"
       : mode === "signup"
-        ? "회원가입"
+        ? inviteToken
+          ? "팀 초대 회원가입"
+          : "회원가입"
         : "비밀번호 재설정";
 
   const description =
     mode === "login"
-      ? "TaxFlo 계정으로 로그인하세요."
+      ? inviteToken
+        ? "초대받은 이메일 계정으로 로그인하면 사무소에 합류할 수 있습니다."
+        : "TaxFlo 계정으로 로그인하세요."
       : mode === "signup"
-        ? "세무사 업무 자동화를 지금 시작하세요."
+        ? inviteToken
+          ? "초대받은 이메일로 가입하면 사무소 팀원으로 등록됩니다."
+          : "세무사 업무 자동화를 지금 시작하세요."
         : "가입한 이메일을 입력하시면 재설정 링크를 보내드립니다.";
 
   const submitLabel =
     mode === "login"
-      ? "로그인"
+      ? inviteToken
+        ? "로그인 후 합류"
+        : "로그인"
       : mode === "signup"
-        ? "회원가입"
+        ? inviteToken
+          ? "가입하고 합류하기"
+          : "회원가입"
         : "재설정 링크 보내기";
 
   return (
@@ -164,6 +242,8 @@ export function AuthForm() {
               placeholder="name@example.com"
               autoComplete="email"
               required
+              readOnly={inviteEmailLocked}
+              className={inviteEmailLocked ? "bg-muted" : undefined}
             />
           </div>
 
@@ -181,9 +261,8 @@ export function AuthForm() {
                   </button>
                 )}
               </div>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="6자 이상"

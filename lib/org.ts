@@ -191,7 +191,7 @@ export async function createOrganizationInvite(
   params: {
     organizationId: string;
     invitedBy: string;
-    email?: string | null;
+    email: string;
   },
 ) {
   const expiresAt = new Date();
@@ -202,7 +202,7 @@ export async function createOrganizationInvite(
     .insert({
       organization_id: params.organizationId,
       invited_by: params.invitedBy,
-      email: params.email?.trim() || null,
+      email: normalizeEmail(params.email),
       expires_at: expiresAt.toISOString(),
     })
     .select("id, token, expires_at")
@@ -221,7 +221,9 @@ export async function getInvitePreview(
 ) {
   const { data: invite } = await service
     .from("organization_invites")
-    .select("id, organization_id, expires_at, accepted_at, organizations(name)")
+    .select(
+      "id, organization_id, expires_at, accepted_at, email, organizations(name)",
+    )
     .eq("token", token)
     .maybeSingle();
 
@@ -237,7 +239,25 @@ export async function getInvitePreview(
     organizationId: invite.organization_id,
     organizationName: invite.organizations?.name ?? "사무소",
     expiresAt: invite.expires_at,
+    invitedEmail: invite.email,
   };
+}
+
+async function getUserEmail(
+  service: ServiceClient,
+  userId: string,
+): Promise<string | null> {
+  const { data } = await service
+    .from("profiles")
+    .select("email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  return data?.email?.trim().toLowerCase() ?? null;
+}
+
+function normalizeEmail(email: string | null | undefined) {
+  return email?.trim().toLowerCase() ?? null;
 }
 
 export async function acceptOrganizationInvite(
@@ -246,7 +266,9 @@ export async function acceptOrganizationInvite(
 ) {
   const { data: invite } = await service
     .from("organization_invites")
-    .select("id, organization_id, expires_at, accepted_at, organizations(seat_limit)")
+    .select(
+      "id, organization_id, expires_at, accepted_at, email, organizations(seat_limit)",
+    )
     .eq("token", params.token)
     .maybeSingle();
 
@@ -256,6 +278,18 @@ export async function acceptOrganizationInvite(
 
   if (new Date(invite.expires_at).getTime() <= Date.now()) {
     throw new Error("만료된 초대 링크입니다.");
+  }
+
+  const invitedEmail = normalizeEmail(invite.email);
+  if (!invitedEmail) {
+    throw new Error("초대 정보가 올바르지 않습니다.");
+  }
+
+  const userEmail = await getUserEmail(service, params.userId);
+  if (!userEmail || userEmail !== invitedEmail) {
+    throw new Error(
+      "초대받은 이메일과 동일한 계정으로 가입·로그인해 주세요.",
+    );
   }
 
   const { data: existingMembership } = await service

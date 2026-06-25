@@ -124,6 +124,10 @@ export function PhrasesSettingsForm() {
     <Card>
       <CardHeader>
         <CardTitle>자주 쓰는 문구</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          최근 저장 문구를 최대 5개 불러와 AI가 맥락에 맞게 표현을 참고해
+          자연스럽게 활용합니다.
+        </p>
       </CardHeader>
       <CardContent className="space-y-6">
         {loading ? (

@@ -17,7 +17,6 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { REVIEW_DISCLAIMER } from "@/lib/constants";
 import { PLANS, PURCHASABLE_PLAN_IDS, formatKrw } from "@/lib/plans";
 
 const PAINS = [
@@ -739,7 +738,6 @@ export default function Home() {
       <footer className="border-t border-border">
         <div className="mx-auto w-full max-w-5xl space-y-2 px-4 py-8 sm:px-6">
           <p className="text-sm font-semibold">TaxFlo</p>
-          <p className="text-xs text-muted-foreground">{REVIEW_DISCLAIMER}</p>
           <p className="text-xs text-muted-foreground">
             본 서비스는 세법 판단을 제공하지 않습니다.
           </p>

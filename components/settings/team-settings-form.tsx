@@ -102,7 +102,7 @@ export function TeamSettingsForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: inviteEmail.trim() || undefined,
+          email: inviteEmail.trim(),
         }),
       });
       const json: InviteApiResult = await res.json();
@@ -231,12 +231,13 @@ export function TeamSettingsForm() {
           <CardContent>
             <form onSubmit={handleInvite} className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                초대 링크는 7일간 유효합니다. 팀원이 TaxFlo에 로그인한 뒤 링크를
-                열어 가입하면 사무소 생성 이력을 함께 볼 수 있습니다.
+                초대할 팀원의 이메일을 입력하면 전용 초대 링크가 생성됩니다. 링크는
+                7일간 유효하며, 해당 이메일로 가입·로그인한 뒤 사무소에 합류할 수
+                있습니다.
               </p>
 
               <div className="space-y-2">
-                <Label htmlFor="inviteEmail">초대할 이메일 (선택)</Label>
+                <Label htmlFor="inviteEmail">초대할 이메일</Label>
                 <Input
                   id="inviteEmail"
                   type="email"
@@ -244,6 +245,7 @@ export function TeamSettingsForm() {
                   onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder="예) teammate@example.com"
                   disabled={inviteLoading}
+                  required
                 />
               </div>
 
