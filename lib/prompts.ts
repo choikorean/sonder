@@ -20,9 +20,14 @@ const BASE_RULES = `당신은 한국 세무사 사무소의 문서 작성을 돕
 - 결과물은 초안이며, 세무사가 검토 후 고객에게 전달합니다.
 - 사용자가 제공하지 않은 사실(금액, 날짜, 거래 내용 등)을 임의로 만들어내지 마세요.
 - 세법 해석이나 최종적인 세무·법률 판단을 제공하지 마세요.
+- 국세청 세무일정이 참고 블록으로 제공된 경우, 해당 일정만 참고하고 임의로 날짜·기한을 만들지 마세요. 생성문 본문에 출처 표기는 하지 마세요.
 - 한국어로 작성하고, 정중하고 전문적인 어조를 사용하세요.
 - 마크다운 문법(**, *, #, \` 등)을 사용하지 마세요. 카카오톡·이메일에 바로 붙여넣을 수 있는 일반 텍스트만 사용하세요.
 - 강조가 필요하면 「」표시, 번호·불릿 목록, 줄바꿈으로 구분하세요.`;
+
+function scheduleContextBlock(scheduleContext?: string | null): string {
+  return scheduleContext?.trim() ?? "";
+}
 
 function profileBlock(profile?: PromptProfile | null): string {
   if (!profile) return "";
@@ -80,6 +85,7 @@ export function buildDocumentRequestPrompt(input: {
   client?: PromptClient | null;
   requestDate?: string;
   submissionDeadline?: string;
+  scheduleContext?: string | null;
 }): PromptMessages {
   const taxLabel = TAX_TYPE_LABELS[input.taxType];
   const businessLabel = BUSINESS_TYPE_LABELS[input.businessType];
@@ -110,10 +116,11 @@ export function buildDocumentRequestPrompt(input: {
 - 해당 세목·사업 유형에서 특히 누락되기 쉬운 자료를 별도로 짚어 안내하세요.
 - 날짜 안내 규칙: 아래 사용자 조건에 제공된 '안내 기준일(요청일)'과 '자료 제출 기한'만 사용하세요.
 - 안내 기준일은 문서 작성일이며, 자료 제출 기한은 그 이후 날짜입니다. 과거 일자로 안내하지 마세요.
+- 국세청 세무일정 참고 블록이 있더라도 자료 제출 기한은 사용자 조건의 날짜를 우선하세요. 일정은 신고·납부 기한 안내 시 보조 참고만 하세요.
 - 신고기한·과세기간·제출마감일 등 구체적 과거 날짜는 사용자가 제공하지 않았다면 임의로 적지 마세요.
 ${rerequestRule}
 ${profileRule}
-${clientRuleText}${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}`;
+${clientRuleText}${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}${scheduleContextBlock(input.scheduleContext)}`;
 
   const user = `다음 조건으로 자료 요청문을 작성해 주세요.
 
@@ -132,6 +139,7 @@ export function buildConsultationSummaryPrompt(input: {
   profile?: PromptProfile | null;
   phrases?: string[];
   client?: PromptClient | null;
+  scheduleContext?: string | null;
 }): PromptMessages {
   const full = input.fullConsultationOutput !== false;
 
@@ -150,9 +158,11 @@ export function buildConsultationSummaryPrompt(input: {
 
   const fullGuidance = full
     ? `- nextActions(내부 후속 조치)와 nextGuidance(고객 대상 다음 안내)를 혼동하지 말고 구분해 작성하세요.
+- nextActions·nextGuidance 작성 시 국세청 세무일정 참고 블록이 있으면 다가오는 신고·납부 일정을 참고할 수 있습니다.
 - clientSummary에는 발신자 정보가 제공된 경우 맺음말에 사무소명·담당자명·연락처를 포함할 수 있습니다.
 ${clientRule(input.client)}`
-    : `- Starter 플랜: 세무사 내부용 요약과 내부 후속 조치만 작성하세요. 고객 전달용 문구는 작성하지 마세요.`;
+    : `- Starter 플랜: 세무사 내부용 요약과 내부 후속 조치만 작성하세요. 고객 전달용 문구는 작성하지 마세요.
+- nextActions 작성 시 국세청 세무일정 참고 블록이 있으면 다가오는 신고·납부 일정을 참고할 수 있습니다.`;
 
   const system = `${BASE_RULES}
 
@@ -165,7 +175,7 @@ ${jsonSchema}
 - 상담 내용에 없는 사실을 추가하지 마세요.
 - 목록형 항목은 줄바꿈으로 구분하세요.
 ${fullGuidance}
-- 모든 JSON 문자열 값은 마크다운 없이 일반 텍스트만 사용하세요.${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}`;
+- 모든 JSON 문자열 값은 마크다운 없이 일반 텍스트만 사용하세요.${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}${scheduleContextBlock(input.scheduleContext)}`;
 
   const user = `다음 상담 내용을 분석해 JSON으로 요약해 주세요.
 
@@ -186,6 +196,7 @@ export function buildTaxExplanationPrompt(input: {
   profile?: PromptProfile | null;
   phrases?: string[];
   client?: PromptClient | null;
+  scheduleContext?: string | null;
 }): PromptMessages {
   const taxLabel = TAX_TYPE_LABELS[input.taxType];
 
@@ -198,9 +209,10 @@ export function buildTaxExplanationPrompt(input: {
 - 이번 신고 세액을 안내하고, 이전 세액 정보가 있으면 변동(증가/감소)과 그 사유를 자연스럽게 설명하세요.
 - 제공된 금액과 사유만 사용하고, 수치를 임의로 계산하거나 추정하지 마세요.
 - 납부기한이 제공된 경우 마지막에 납부기한 안내를 포함하세요. 제공되지 않았다면 납부기한을 임의로 만들지 마세요.
+- 국세청 세무일정 참고 블록이 있어도 납부기한 미제공 시 임의로 기한을 적지 마세요. 참고 블록은 안내 문구 작성 시 보조로만 활용하세요.
 - 카카오톡이나 이메일로 바로 보낼 수 있는 형태로 작성하세요.
 - 발신자 정보가 제공된 경우 맺음말에 사무소명·담당자명·연락처를 정중하게 포함하세요.
-${clientRule(input.client)}${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}`;
+${clientRule(input.client)}${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}${scheduleContextBlock(input.scheduleContext)}`;
 
   const lines = [
     `- 세목: ${taxLabel}`,

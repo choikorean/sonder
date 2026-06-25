@@ -12,6 +12,7 @@ import {
   firstZodErrorMessage,
 } from "@/lib/validators";
 import { buildConsultationSummaryPrompt } from "@/lib/prompts";
+import { getTaxSchedulePromptBlock } from "@/lib/tax-schedule/prompt-context";
 import type { PromptClient } from "@/lib/prompt-client";
 import type { PromptProfile } from "@/lib/subscriber-context";
 import {
@@ -41,6 +42,7 @@ async function summarize(
     profile?: PromptProfile | null;
     phrases?: string[];
     client?: PromptClient | null;
+    scheduleContext?: string;
   },
 ): Promise<{ fields: ConsultationFields; tokens: number | null }> {
   const openai = getOpenAIClient();
@@ -50,6 +52,7 @@ async function summarize(
     profile: options.profile,
     phrases: options.phrases,
     client: options.client,
+    scheduleContext: options.scheduleContext,
   });
 
   const completion = await openai.chat.completions.create({
@@ -244,6 +247,11 @@ export async function POST(request: NextRequest) {
     organizationId: ctx.organization?.id,
   });
 
+  const scheduleContext = await getTaxSchedulePromptBlock(supabase, {
+    consultationText: sourceText,
+    withinDays: 45,
+  });
+
   let fields: ConsultationFields;
   let tokensEstimated: number | null = null;
   try {
@@ -252,6 +260,7 @@ export async function POST(request: NextRequest) {
       profile: ctx.capabilities.officeSignature ? ctx.profile : null,
       phrases,
       client: promptClient,
+      scheduleContext,
     });
     fields = result.fields;
     tokensEstimated = result.tokens;

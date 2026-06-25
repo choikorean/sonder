@@ -698,6 +698,87 @@ export type Database = {
           },
         ]
       }
+      tax_schedule_events: {
+        Row: {
+          content_hash: string
+          created_at: string
+          event_date: string
+          id: string
+          note: string | null
+          source_month: number
+          source_url: string
+          source_year: number
+          tax_categories: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content_hash: string
+          created_at?: string
+          event_date: string
+          id?: string
+          note?: string | null
+          source_month: number
+          source_url: string
+          source_year: number
+          tax_categories?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content_hash?: string
+          created_at?: string
+          event_date?: string
+          id?: string
+          note?: string | null
+          source_month?: number
+          source_url?: string
+          source_year?: number
+          tax_categories?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tax_schedule_sync_runs: {
+        Row: {
+          error_message: string | null
+          events_deleted: number
+          events_upserted: number
+          finished_at: string | null
+          id: string
+          months_processed: number
+          started_at: string
+          status: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          error_message?: string | null
+          events_deleted?: number
+          events_upserted?: number
+          finished_at?: string | null
+          id?: string
+          months_processed?: number
+          started_at?: string
+          status: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          error_message?: string | null
+          events_deleted?: number
+          events_upserted?: number
+          finished_at?: string | null
+          id?: string
+          months_processed?: number
+          started_at?: string
+          status?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       usage_events: {
         Row: {
           created_at: string

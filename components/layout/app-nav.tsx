@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/consultations", label: "상담 요약" },
   { href: "/reports", label: "신고 결과 설명문" },
   { href: "/history", label: "생성 내역" },
+  { href: "/schedule", label: "세무일정" },
   { href: "/settings", label: "설정" },
   { href: "/billing", label: "요금제" },
   { href: "/settings/billing", label: "결제 및 구독", requiresBillingManager: true },

@@ -204,6 +204,22 @@ export const orgInviteAcceptSchema = z.object({
 export type OrgInviteInput = z.infer<typeof orgInviteSchema>;
 export type OrgInviteAcceptInput = z.infer<typeof orgInviteAcceptSchema>;
 
+export const taxScheduleQuerySchema = z.object({
+  year: z.coerce
+    .number()
+    .int("연도는 정수여야 합니다.")
+    .min(2000, "연도가 올바르지 않습니다.")
+    .max(2100, "연도가 올바르지 않습니다."),
+  month: z.coerce
+    .number()
+    .int("월은 정수여야 합니다.")
+    .min(1, "월은 1~12 사이여야 합니다.")
+    .max(12, "월은 1~12 사이여야 합니다."),
+  taxCategory: z.enum(TAX_TYPES).optional(),
+});
+
+export type TaxScheduleQueryInput = z.infer<typeof taxScheduleQuerySchema>;
+
 /** ZodError에서 사용자에게 보여줄 첫 번째 한국어 메시지를 추출합니다. */
 export function firstZodErrorMessage(error: ZodError): string {
   return error.issues[0]?.message ?? "입력값이 올바르지 않습니다.";

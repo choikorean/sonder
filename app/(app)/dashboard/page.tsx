@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  CalendarDays,
   FileText,
   MessagesSquare,
   Receipt,
@@ -19,6 +20,8 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { TAX_TYPE_LABELS, FEATURE_LABELS, type TaxType } from "@/lib/constants";
 import { getUsageStatus, getMonthlyUsageByFeature } from "@/lib/usage";
+import { formatScheduleDate } from "@/lib/tax-schedule/calendar";
+import { getUpcomingTaxScheduleEvents } from "@/lib/tax-schedule/queries";
 
 export const metadata = {
   title: "대시보드",
@@ -177,10 +180,11 @@ const FEATURE_ORDER = [
 export default async function DashboardPage() {
   const supabase = await createClient();
   const ctx = await getSubscriberContext(supabase);
-  const [recentItems, usage, byFeature] = await Promise.all([
+  const [recentItems, usage, byFeature, upcomingSchedule] = await Promise.all([
     getRecentItems(),
     getUsageStatus(supabase),
     getMonthlyUsageByFeature(supabase),
+    getUpcomingTaxScheduleEvents(supabase, 5),
   ]);
 
   const featureCards = [
@@ -255,6 +259,61 @@ export default async function DashboardPage() {
             ))}
           </div>
         </Card>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">이번 달 세무일정</h2>
+          <Link
+            href="/schedule"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            전체 보기
+          </Link>
+        </div>
+
+        {upcomingSchedule.length === 0 ? (
+          <EmptyState
+            icon={CalendarDays}
+            title="다가오는 일정이 없습니다"
+            description="국세청 일정이 동기화되면 이곳에 표시됩니다."
+            action={
+              <Link
+                href="/schedule"
+                className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+              >
+                세무일정 메뉴로 이동
+              </Link>
+            }
+          />
+        ) : (
+          <Card>
+            <ul className="divide-y divide-border">
+              {upcomingSchedule.map((event) => (
+                <li key={event.id}>
+                  <Link
+                    href="/schedule"
+                    className="flex items-start justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/40"
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <p className="truncate text-sm">{event.title}</p>
+                      {event.taxCategories.length > 0 && (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {event.taxCategories
+                            .map((category) => taxLabel(category))
+                            .join(" · ")}
+                        </p>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {formatScheduleDate(event.eventDate)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2">

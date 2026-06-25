@@ -8,6 +8,7 @@ import {
 } from "@/lib/clients";
 import { requestGenerateSchema, firstZodErrorMessage } from "@/lib/validators";
 import { buildDocumentRequestPrompt } from "@/lib/prompts";
+import { getTaxSchedulePromptBlock } from "@/lib/tax-schedule/prompt-context";
 import {
   getOpenAIClient,
   OPENAI_MODEL,
@@ -69,6 +70,11 @@ export async function POST(request: NextRequest) {
     organizationId: ctx.organization?.id,
   });
 
+  const scheduleContext = await getTaxSchedulePromptBlock(supabase, {
+    taxType,
+    withinDays: 45,
+  });
+
   let result: string;
   let tokensEstimated: number | null = null;
   try {
@@ -81,6 +87,7 @@ export async function POST(request: NextRequest) {
       profile: ctx.capabilities.officeSignature ? ctx.profile : null,
       phrases,
       client: promptClient,
+      scheduleContext,
     });
 
     const completion = await openai.chat.completions.create({
