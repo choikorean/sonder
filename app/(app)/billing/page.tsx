@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSubscriberContext } from "@/lib/subscriber-context";
 import { getUsageStatus } from "@/lib/usage";
 import { PlanSelector } from "@/components/billing/plan-selector";
+import { SettingsNav } from "@/components/settings/settings-nav";
 import {
   BILLING_STATUS_LABELS,
   formatBillingDate,
@@ -30,6 +31,11 @@ export default async function BillingPage() {
           신고 시즌 반복 업무 시간을 줄이는 플랜을 선택하세요.
         </p>
       </div>
+
+      <SettingsNav
+        activeHref="/billing"
+        canManageBilling={ctx.canManageBilling}
+      />
 
       <section className="rounded-xl border border-border p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">

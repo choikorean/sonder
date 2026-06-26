@@ -23,7 +23,6 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-full flex-col">
       <AppNav
-        email={user.email ?? ""}
         canManageBilling={ctx.canManageBilling}
         canUseClientProfiles={ctx.capabilities.clientProfiles}
       />

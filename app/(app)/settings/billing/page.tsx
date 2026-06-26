@@ -2,7 +2,9 @@ import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
 import { BillingSubNav } from "@/components/billing/billing-sub-nav";
+import { SettingsNav } from "@/components/settings/settings-nav";
 import { createClient } from "@/lib/supabase/server";
+import { getSubscriberContext } from "@/lib/subscriber-context";
 import { getBillingOverview } from "@/lib/billing/queries";
 import { canAccessCancelSubscriptionPage } from "@/lib/account/withdraw";
 import { formatBillingDate } from "@/lib/billing/helpers";
@@ -15,6 +17,7 @@ export const metadata = {
 
 export default async function SettingsBillingPage() {
   const supabase = await createClient();
+  const ctx = await getSubscriberContext(supabase);
   const overview = await getBillingOverview(supabase);
   const { subscription, billingKey, statusLabel } = overview;
   const monthlyAmount = planPrice(subscription.plan, subscription.billingCycle);
@@ -27,6 +30,11 @@ export default async function SettingsBillingPage() {
           현재 요금제, 결제수단, 결제내역을 관리합니다.
         </p>
       </div>
+
+      <SettingsNav
+        activeHref="/settings/billing"
+        canManageBilling={ctx.canManageBilling}
+      />
 
       <BillingSubNav />
 

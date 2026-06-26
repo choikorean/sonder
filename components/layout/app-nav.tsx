@@ -13,14 +13,13 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "대시보드" },
   { href: "/requests", label: "자료 요청 생성" },
   { href: "/campaigns", label: "자료 캠페인", requiresClientProfiles: true },
+  { href: "/settings/clients", label: "고객 관리", requiresClientProfiles: true },
   { href: "/consultations", label: "상담 요약" },
   { href: "/follow-ups", label: "후속 조치" },
   { href: "/reports", label: "신고 결과 설명문" },
   { href: "/history", label: "생성 내역" },
   { href: "/schedule", label: "세무일정" },
   { href: "/settings", label: "설정" },
-  { href: "/billing", label: "요금제" },
-  { href: "/settings/billing", label: "결제 및 구독", requiresBillingManager: true },
 ] as const;
 
 function getNavItems(canManageBilling: boolean, canUseClientProfiles: boolean) {
@@ -36,11 +35,9 @@ function getNavItems(canManageBilling: boolean, canUseClientProfiles: boolean) {
 }
 
 export function AppNav({
-  email,
   canManageBilling,
   canUseClientProfiles,
 }: {
-  email: string;
   canManageBilling: boolean;
   canUseClientProfiles: boolean;
 }) {
@@ -50,6 +47,15 @@ export function AppNav({
   const [signingOut, setSigningOut] = useState(false);
 
   function isActive(href: string) {
+    if (href === "/settings") {
+      return (
+        pathname === "/settings" ||
+        (pathname.startsWith("/settings/") &&
+          !pathname.startsWith("/settings/clients")) ||
+        pathname === "/billing" ||
+        pathname.startsWith("/billing/")
+      );
+    }
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
@@ -95,12 +101,6 @@ export function AppNav({
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-          <span
-            className="hidden max-w-[7rem] truncate text-sm text-muted-foreground sm:max-w-[9rem] lg:inline xl:max-w-[12rem]"
-            title={email}
-          >
-            {email}
-          </span>
           <Button
             variant="ghost"
             size="sm"
@@ -141,13 +141,7 @@ export function AppNav({
                 {item.label}
               </Link>
             ))}
-            <div className="mt-2 flex items-center justify-between gap-3 border-t border-border pt-3">
-              <span
-                className="min-w-0 truncate text-sm text-muted-foreground"
-                title={email}
-              >
-                {email}
-              </span>
+            <div className="mt-2 flex justify-end border-t border-border pt-3">
               <Button
                 variant="ghost"
                 size="sm"
