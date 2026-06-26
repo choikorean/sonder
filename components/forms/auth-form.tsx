@@ -9,6 +9,7 @@ import {
   getAuthErrorMessage,
   translateAuthError,
 } from "@/lib/auth-errors";
+import { ACCOUNT_DATA_RETENTION_DAYS } from "@/lib/account/withdraw";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -66,6 +67,11 @@ export function AuthForm() {
   useEffect(() => {
     if (searchParams.get("error") === "auth_callback") {
       setError(AUTH_CALLBACK_ERROR_MESSAGE);
+    }
+    if (searchParams.get("withdrawn") === "1") {
+      setMessage(
+        `회원 탈퇴가 완료되었습니다. 데이터는 ${ACCOUNT_DATA_RETENTION_DAYS}일간 보관된 뒤 삭제됩니다.`,
+      );
     }
     if (searchParams.get("mode") === "signup" || inviteToken) {
       setMode("signup");

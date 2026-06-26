@@ -7,11 +7,20 @@ import {
   firstZodErrorMessage,
 } from "@/lib/validators";
 import { cancelSubscriptionAtPeriodEnd } from "@/lib/billing/subscription-service";
+import { getSubscription } from "@/lib/subscription";
 
 export async function POST(request: NextRequest) {
   const auth = await requireBillingManager();
   if (!auth.ok) return auth.response;
-  const { user } = auth;
+  const { user, supabase } = auth;
+
+  const subscription = await getSubscription(supabase);
+  if (subscription.isTrialing) {
+    return errorResponse(
+      "무료 체험 중에는 구독 해지 대신 설정의 회원 탈퇴를 이용해 주세요.",
+      400,
+    );
+  }
 
   let body: unknown = {};
   try {

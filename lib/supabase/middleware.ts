@@ -56,6 +56,22 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (user && isProtectedPath(pathname)) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("withdrawn_at")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.withdrawn_at) {
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.search = "?withdrawn=1";
+      return NextResponse.redirect(url);
+    }
+  }
+
   if (user && pathname === "/login") {
     const next = request.nextUrl.searchParams.get("next");
     const url = request.nextUrl.clone();

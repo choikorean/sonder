@@ -3,6 +3,7 @@ import { getSubscriberContext } from "@/lib/subscriber-context";
 import { ProfileSettingsForm } from "@/components/settings/profile-settings-form";
 import { PhrasesSettingsForm } from "@/components/settings/phrases-settings-form";
 import { SettingsNav } from "@/components/settings/settings-nav";
+import { AccountWithdrawalSection } from "@/components/settings/account-withdrawal-section";
 
 export const metadata = {
   title: "설정",
@@ -32,6 +33,7 @@ export default async function SettingsPage() {
       <div className="space-y-6">
         <ProfileSettingsForm canEdit={canEditProfile} />
         <PhrasesSettingsForm />
+        <AccountWithdrawalSection ctx={ctx} />
       </div>
     </div>
   );

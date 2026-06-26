@@ -1,13 +1,24 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { BillingSubNav } from "@/components/billing/billing-sub-nav";
 import { CancelSubscriptionForm } from "@/components/billing/cancel-subscription-form";
+import { createClient } from "@/lib/supabase/server";
+import { canAccessCancelSubscriptionPage } from "@/lib/account/withdraw";
+import { getSubscription } from "@/lib/subscription";
 
 export const metadata = {
   title: "구독 해지",
 };
 
-export default function CancelBillingPage() {
+export default async function CancelBillingPage() {
+  const supabase = await createClient();
+  const subscription = await getSubscription(supabase);
+
+  if (!canAccessCancelSubscriptionPage(subscription)) {
+    redirect("/settings/billing");
+  }
+
   return (
     <div className="mx-auto max-w-lg space-y-8">
       <div className="space-y-1">
