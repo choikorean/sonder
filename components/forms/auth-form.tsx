@@ -28,6 +28,49 @@ type InviteAcceptResult =
   | { success: true; data: { organizationId: string } }
   | { success: false; error: string };
 
+type WithdrawnStatusResult =
+  | { success: true; data: { canReactivate: boolean; retentionExpired: boolean } }
+  | { success: false; error: string };
+
+type ReactivateResult =
+  | { success: true; data: { userId: string; message: string } }
+  | { success: false; error: string };
+
+const REACTIVATE_LOGIN_MESSAGE =
+  "탈퇴한 계정입니다. 동일 이메일로 회원가입하면 이름과 비밀번호를 새로 설정해 계정을 복구할 수 있습니다.";
+
+const REACTIVATE_SIGNUP_DESCRIPTION =
+  "탈퇴한 계정을 동일 이메일로 복구합니다. 이름과 비밀번호를 새로 설정해 주세요.";
+
+async function fetchWithdrawnStatus(email: string): Promise<WithdrawnStatusResult> {
+  const res = await fetch("/api/account/withdrawn-status", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  return res.json();
+}
+
+async function reactivateAccount(input: {
+  email: string;
+  password: string;
+  name: string;
+}): Promise<ReactivateResult> {
+  const res = await fetch("/api/account/reactivate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return res.json();
+}
+
+function getWithdrawnSignupMessage(retentionExpired: boolean) {
+  if (retentionExpired) {
+    return `데이터 보관 기간(${ACCOUNT_DATA_RETENTION_DAYS}일)이 지나 동일 이메일로 계정을 복구할 수 없습니다.`;
+  }
+  return "이미 가입된 이메일입니다. 탈퇴한 계정이라면 아래에서 이름과 비밀번호를 새로 설정해 복구할 수 있습니다.";
+}
+
 function getSafeNextPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return "/dashboard";
@@ -63,6 +106,7 @@ export function AuthForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [isReactivateSignup, setIsReactivateSignup] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("error") === "auth_callback") {
@@ -72,6 +116,11 @@ export function AuthForm() {
       setMessage(
         `회원 탈퇴가 완료되었습니다. 데이터는 ${ACCOUNT_DATA_RETENTION_DAYS}일간 보관된 뒤 삭제됩니다.`,
       );
+    }
+    if (searchParams.get("reactivate") === "1") {
+      setMessage(REACTIVATE_LOGIN_MESSAGE);
+      setMode("signup");
+      setIsReactivateSignup(true);
     }
     if (searchParams.get("mode") === "signup" || inviteToken) {
       setMode("signup");
@@ -104,6 +153,38 @@ export function AuthForm() {
     setMode(next);
     setError(null);
     setMessage(null);
+    if (next !== "signup") {
+      setIsReactivateSignup(false);
+    }
+  }
+
+  async function handleReactivateSignup() {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError("이름을 입력해 주세요.");
+      return;
+    }
+
+    const reactivateResult = await reactivateAccount({
+      email,
+      password,
+      name: trimmedName,
+    });
+
+    if (!reactivateResult.success) {
+      setError(reactivateResult.error);
+      return;
+    }
+
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInError) throw signInError;
+
+    setIsReactivateSignup(false);
+    await finishAuthWithInvite();
   }
 
   async function finishAuthWithInvite() {
@@ -146,6 +227,24 @@ export function AuthForm() {
       }
 
       if (mode === "signup") {
+        if (!inviteToken) {
+          const withdrawnStatus = await fetchWithdrawnStatus(email);
+          if (!withdrawnStatus.success) {
+            setError(withdrawnStatus.error);
+            return;
+          }
+
+          if (withdrawnStatus.data.canReactivate) {
+            await handleReactivateSignup();
+            return;
+          }
+
+          if (withdrawnStatus.data.retentionExpired) {
+            setError(getWithdrawnSignupMessage(true));
+            return;
+          }
+        }
+
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -154,7 +253,30 @@ export function AuthForm() {
             emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
           },
         });
-        if (signUpError) throw signUpError;
+
+        if (signUpError) {
+          const message = getAuthErrorMessage(signUpError).toLowerCase();
+          if (
+            !inviteToken &&
+            (message.includes("already registered") ||
+              message.includes("already been registered"))
+          ) {
+            const withdrawnStatus = await fetchWithdrawnStatus(email);
+            if (withdrawnStatus.success && withdrawnStatus.data.canReactivate) {
+              setIsReactivateSignup(true);
+              setMessage(getWithdrawnSignupMessage(false));
+              return;
+            }
+            if (
+              withdrawnStatus.success &&
+              withdrawnStatus.data.retentionExpired
+            ) {
+              setError(getWithdrawnSignupMessage(true));
+              return;
+            }
+          }
+          throw signUpError;
+        }
 
         const {
           data: { session },
@@ -170,6 +292,24 @@ export function AuthForm() {
           );
         }
       } else {
+        const withdrawnStatus = await fetchWithdrawnStatus(email);
+        if (!withdrawnStatus.success) {
+          setError(withdrawnStatus.error);
+          return;
+        }
+
+        if (withdrawnStatus.data.canReactivate) {
+          setMode("signup");
+          setIsReactivateSignup(true);
+          setMessage(REACTIVATE_LOGIN_MESSAGE);
+          return;
+        }
+
+        if (withdrawnStatus.data.retentionExpired) {
+          setError(getWithdrawnSignupMessage(true));
+          return;
+        }
+
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -202,7 +342,9 @@ export function AuthForm() {
       : mode === "signup"
         ? inviteToken
           ? "초대받은 이메일로 가입하면 사무소 팀원으로 등록됩니다."
-          : "세무사 업무 자동화를 지금 시작하세요."
+          : isReactivateSignup
+            ? REACTIVATE_SIGNUP_DESCRIPTION
+            : "세무사 업무 자동화를 지금 시작하세요."
         : "가입한 이메일을 입력하시면 재설정 링크를 보내드립니다.";
 
   const submitLabel =
@@ -213,7 +355,9 @@ export function AuthForm() {
       : mode === "signup"
         ? inviteToken
           ? "가입하고 합류하기"
-          : "회원가입"
+          : isReactivateSignup
+            ? "계정 복구하기"
+            : "회원가입"
         : "재설정 링크 보내기";
 
   return (
@@ -234,6 +378,7 @@ export function AuthForm() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="홍길동"
                 autoComplete="name"
+                required
               />
             </div>
           )}

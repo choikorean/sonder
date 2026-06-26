@@ -75,11 +75,27 @@ function clientRule(client?: PromptClient | null): string {
   return "- 수신 고객 정보가 제공된 경우 인사말에서 고객명(상호)을 정확히 사용하세요. 담당자명이 있으면 적절히 호칭하세요. 고객 관련 메모는 제공된 내용만 반영하세요.";
 }
 
+function documentRationaleRules(include: boolean): string {
+  if (!include) return "";
+  return `- 자료 필요 이유 안내(필수):
+  - 필요한 자료 목록에서 각 항목마다 왜 필요한지 1문장씩 일반적인 이유를 덧붙이세요. (항목명 → 이유 형식)
+  - 이유는 일반적인 신고·대조·확인 목적 수준으로만 설명하고, 세법 해석·세액 확정·합법/불법 판단은 하지 마세요.
+- 「홈택스에 다 있는 거 아닌가요?」 질문에 대비해, 요청 목적 바로 다음에 2~3문장으로 정중히 안내하세요:
+  - 홈택스·카드매출 등 일부 자료는 조회되지만, 사업장 보유 자료가 추가로 필요할 수 있음
+  - 세무사가 신고서 작성·검토를 위해 대조·확인하는 자료임을 설명 (최종 판단은 세무사가 함을 암시)`;
+}
+
+function missingItemRationaleRules(include: boolean): string {
+  if (!include) return "";
+  return `- 미제출 자료 각 항목마다 왜 아직 필요한지 1문장씩 짧게 덧붙이세요. 세법 판단은 하지 마세요.`;
+}
+
 export function buildDocumentRequestPrompt(input: {
   taxType: TaxType;
   businessType: BusinessType;
   memo?: string | null;
   includeRerequest?: boolean;
+  includeDocumentRationale?: boolean;
   profile?: PromptProfile | null;
   phrases?: string[];
   client?: PromptClient | null;
@@ -93,6 +109,7 @@ export function buildDocumentRequestPrompt(input: {
   const requestDate = input.requestDate ?? dates.requestDate;
   const submissionDeadline =
     input.submissionDeadline ?? dates.submissionDeadline;
+  const includeDocumentRationale = input.includeDocumentRationale !== false;
 
   const rerequestRule = input.includeRerequest
     ? "- 마지막에는 \"자료 미제출 시 사용할 수 있는 정중한 재요청 문구\"를 별도 섹션(예: [재요청 문구])으로 함께 제시하세요."
@@ -103,6 +120,7 @@ export function buildDocumentRequestPrompt(input: {
     : "";
 
   const clientRuleText = clientRule(input.client);
+  const rationaleRules = documentRationaleRules(includeDocumentRationale);
 
   const system = `${BASE_RULES}
 
@@ -110,7 +128,7 @@ export function buildDocumentRequestPrompt(input: {
 
 작성 지침:
 - 카카오톡이나 이메일로 바로 보낼 수 있는 형태로 작성하세요.
-- 다음 순서로 구성하세요: 인사말 → 요청 목적 → 필요한 자료 목록(항목별 정리) → 누락되기 쉬운 자료 안내 → 제출 기한 안내 → 맺음말.
+- 다음 순서로 구성하세요: 인사말 → 요청 목적 → (홈택스 관련 안내) → 필요한 자료 목록(항목별 정리) → 누락되기 쉬운 자료 안내 → 제출 기한 안내 → 맺음말.
 - 세목과 사업 유형에 일반적으로 필요한 자료를 제시하되, 단정적인 세무 판단은 피하세요.
 - 항목은 번호나 불릿으로 읽기 쉽게 정리하세요.
 - 해당 세목·사업 유형에서 특히 누락되기 쉬운 자료를 별도로 짚어 안내하세요.
@@ -118,6 +136,7 @@ export function buildDocumentRequestPrompt(input: {
 - 안내 기준일은 문서 작성일이며, 자료 제출 기한은 그 이후 날짜입니다. 과거 일자로 안내하지 마세요.
 - 국세청 세무일정 참고 블록이 있더라도 자료 제출 기한은 사용자 조건의 날짜를 우선하세요. 일정은 신고·납부 기한 안내 시 보조 참고만 하세요.
 - 신고기한·과세기간·제출마감일 등 구체적 과거 날짜는 사용자가 제공하지 않았다면 임의로 적지 마세요.
+${rationaleRules}
 ${rerequestRule}
 ${profileRule}
 ${clientRuleText}${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}${scheduleContextBlock(input.scheduleContext)}`;
@@ -129,6 +148,111 @@ ${clientRuleText}${profileBlock(input.profile)}${clientBlock(input.client)}${phr
 - 안내 기준일(요청일): ${requestDate}
 - 자료 제출 기한: ${submissionDeadline}
 - 특이사항: ${input.memo?.trim() || "없음"}`;
+
+  return { system, user };
+}
+
+export function buildDocumentRerequestPrompt(input: {
+  taxType: TaxType;
+  businessType: BusinessType;
+  missingItems: string[];
+  memo?: string | null;
+  includeDocumentRationale?: boolean;
+  profile?: PromptProfile | null;
+  phrases?: string[];
+  client?: PromptClient | null;
+  requestDate?: string;
+  submissionDeadline?: string;
+  scheduleContext?: string | null;
+}): PromptMessages {
+  const taxLabel = TAX_TYPE_LABELS[input.taxType];
+  const businessLabel = BUSINESS_TYPE_LABELS[input.businessType];
+  const dates = getDocumentRequestDates();
+  const requestDate = input.requestDate ?? dates.requestDate;
+  const submissionDeadline =
+    input.submissionDeadline ?? dates.submissionDeadline;
+  const missingList = input.missingItems.map((item) => `- ${item}`).join("\n");
+  const rationaleRules = missingItemRationaleRules(
+    input.includeDocumentRationale !== false,
+  );
+
+  const profileRule = input.profile
+    ? "- 발신자 정보가 제공된 경우 사무소명·담당자명·연락처를 본문과 맺음말에 정확히 반영하세요."
+    : "";
+
+  const system = `${BASE_RULES}
+
+작업: 세무사 사무소가 거래처(고객)에게 보내는 "누락 자료 재요청문"만 작성합니다. 최초 자료 요청 전체 목록을 다시 나열하지 마세요.
+
+작성 지침:
+- 카카오톡이나 이메일로 바로 보낼 수 있는 형태로 작성하세요.
+- 인사말 → 이전 요청에 대한 짧은 언급 → 아직 필요한 자료(아래 목록만) → 제출 기한 재안내 → 맺음말 순으로 구성하세요.
+- 아래 「미제출 자료」에 없는 항목은 추가하지 마세요.
+- 정중하고 부담스럽지 않은 어조를 유지하세요.
+- 날짜 안내 규칙: 아래 사용자 조건의 '안내 기준일'과 '자료 제출 기한'만 사용하세요.
+${rationaleRules}
+${profileRule}
+${clientRule(input.client)}${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}${scheduleContextBlock(input.scheduleContext)}`;
+
+  const user = `다음 조건으로 누락 자료 재요청문만 작성해 주세요.
+
+- 세목: ${taxLabel}
+- 사업 유형: ${businessLabel}
+- 안내 기준일(요청일): ${requestDate}
+- 자료 제출 기한: ${submissionDeadline}
+- 미제출 자료:
+${missingList}
+- 추가 특이사항: ${input.memo?.trim() || "없음"}`;
+
+  return { system, user };
+}
+
+export function buildDocumentExplanationPrompt(input: {
+  taxType: TaxType;
+  documentItems: string[];
+  customerQuestion?: string | null;
+  businessType?: BusinessType | null;
+  memo?: string | null;
+  profile?: PromptProfile | null;
+  phrases?: string[];
+  client?: PromptClient | null;
+  scheduleContext?: string | null;
+}): PromptMessages {
+  const taxLabel = TAX_TYPE_LABELS[input.taxType];
+  const businessLabel = input.businessType
+    ? BUSINESS_TYPE_LABELS[input.businessType]
+    : null;
+  const itemsList = input.documentItems.map((item) => `- ${item}`).join("\n");
+
+  const system = `${BASE_RULES}
+
+작업: 거래처(고객)가 「왜 이 자료가 필요한가요?」「홈택스에 다 있는 거 아닌가요?」 등으로 문의했을 때, 세무사가 카카오톡·문자로 보낼 수 있는 "자료 필요 이유 설명문"을 작성합니다.
+
+작성 지침:
+- 전체 3~8문장 분량의 짧고 정중한 안내문으로 작성하세요. (자료가 많으면 항목별 1문장씩 bullet 목록 가능)
+- 아래 제공된 자료 항목에 대해서만 설명하고, 목록에 없는 자료는 추가하지 마세요.
+- 각 자료가 왜 필요한지 일반적인 신고·대조·확인 목적 수준으로만 설명하세요.
+- 홈택스·전자신고 등에 일부 자료가 있어도, 사업장 보유 자료가 추가로 필요할 수 있음을 정중히 안내할 수 있습니다.
+- 세법 해석, 세액 확정, 합법/불법 판단, 최종 신고 결과 예측은 하지 마세요.
+- 고객 질문이 제공된 경우 해당 질문에 먼저 답하는 형태로 작성하세요.
+- 발신자 정보가 제공된 경우 맺음말에 사무소명·담당자명·연락처를 포함할 수 있습니다.
+${clientRule(input.client)}${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}${scheduleContextBlock(input.scheduleContext)}`;
+
+  const lines = [`- 세목: ${taxLabel}`];
+  if (businessLabel) {
+    lines.push(`- 사업 유형: ${businessLabel}`);
+  }
+  if (input.customerQuestion?.trim()) {
+    lines.push(`- 고객 질문: ${input.customerQuestion.trim()}`);
+  }
+  lines.push(`- 설명할 자료:\n${itemsList}`);
+  if (input.memo?.trim()) {
+    lines.push(`- 특이사항: ${input.memo.trim()}`);
+  }
+
+  const user = `다음 조건으로 자료 필요 이유 설명문을 작성해 주세요.
+
+${lines.join("\n")}`;
 
   return { system, user };
 }
@@ -200,18 +324,27 @@ export function buildTaxExplanationPrompt(input: {
 }): PromptMessages {
   const taxLabel = TAX_TYPE_LABELS[input.taxType];
 
+  const jsonSchema = `{
+  "amountSummary": "이번 신고 세액 및 전년 대비 변동을 고객이 이해하기 쉽게 설명 (제공된 금액만 사용)",
+  "changeExplanation": "변동 사유 설명 (전년 대비 변동이 없거나 사유가 없으면 '해당 없음')",
+  "paymentGuidance": "납부 안내·마무리 인사 (납부기한이 제공된 경우 포함, 없으면 기한을 만들지 않음)"
+}`;
+
   const system = `${BASE_RULES}
 
 작업: 세무사가 고객에게 신고 결과를 안내하는 "설명문"을 작성합니다.
 
+반드시 아래 키를 가진 JSON 객체로만 응답하세요. 추가 설명이나 마크다운은 포함하지 마세요.
+${jsonSchema}
+
 작성 지침:
-- 전문 용어는 최소화하고, 일반 고객이 이해하기 쉽게 설명하세요.
-- 이번 신고 세액을 안내하고, 이전 세액 정보가 있으면 변동(증가/감소)과 그 사유를 자연스럽게 설명하세요.
+- amountSummary: 전문 용어는 최소화하고, 일반 고객이 이해하기 쉽게 이번 신고 세액을 안내하세요. 이전 세액이 있으면 증감을 함께 설명하세요.
+- changeExplanation: 제공된 변동 사유만 활용하세요. 사유가 없거나 변동이 없으면 '해당 없음'으로 작성하세요.
+- paymentGuidance: 납부 안내와 정중한 마무리 인사를 작성하세요. 납부기한이 제공된 경우에만 기한을 안내하세요.
 - 제공된 금액과 사유만 사용하고, 수치를 임의로 계산하거나 추정하지 마세요.
-- 납부기한이 제공된 경우 마지막에 납부기한 안내를 포함하세요. 제공되지 않았다면 납부기한을 임의로 만들지 마세요.
-- 국세청 세무일정 참고 블록이 있어도 납부기한 미제공 시 임의로 기한을 적지 마세요. 참고 블록은 안내 문구 작성 시 보조로만 활용하세요.
-- 카카오톡이나 이메일로 바로 보낼 수 있는 형태로 작성하세요.
-- 발신자 정보가 제공된 경우 맺음말에 사무소명·담당자명·연락처를 정중하게 포함하세요.
+- 국세청 세무일정 참고 블록이 있어도 납부기한 미제공 시 임의로 기한을 적지 마세요.
+- 발신자 정보가 제공된 경우 paymentGuidance 맺음말에 사무소명·담당자명·연락처를 포함할 수 있습니다.
+- 모든 JSON 문자열 값은 마크다운 없이 일반 텍스트만 사용하세요.
 ${clientRule(input.client)}${profileBlock(input.profile)}${clientBlock(input.client)}${phraseBlock(input.phrases)}${scheduleContextBlock(input.scheduleContext)}`;
 
   const lines = [
@@ -232,7 +365,7 @@ ${clientRule(input.client)}${profileBlock(input.profile)}${clientBlock(input.cli
     lines.push(`- 특이사항: ${input.memo.trim()}`);
   }
 
-  const user = `다음 정보를 바탕으로 고객 설명문을 작성해 주세요.
+  const user = `다음 정보를 바탕으로 고객 설명문 JSON을 작성해 주세요.
 
 ${lines.join("\n")}`;
 

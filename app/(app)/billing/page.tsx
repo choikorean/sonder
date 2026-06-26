@@ -44,14 +44,16 @@ export default async function BillingPage() {
               </span>
             </p>
           </div>
-          {subscription.isActive && (
+          {(subscription.isActive || usage.trialExpired) && (
             <div className="text-right">
               <p className="text-sm text-muted-foreground">
-                {subscription.isTrialing ? "체험 종료일" : "다음 갱신일"}
+                {subscription.isTrialing || usage.trialExpired
+                  ? "체험 종료일"
+                  : "다음 갱신일"}
               </p>
               <p className="mt-1 text-sm font-medium">
                 {formatBillingDate(
-                  subscription.isTrialing
+                  subscription.isTrialing || usage.trialExpired
                     ? subscription.trialEndsAt ?? subscription.currentPeriodEnd
                     : subscription.nextBillingAt ?? subscription.currentPeriodEnd,
                 )}
@@ -72,8 +74,13 @@ export default async function BillingPage() {
         )}
 
         <div className="mt-6 space-y-2">
+          {usage.trialExpired && (
+            <p className="text-sm text-muted-foreground">
+              무료 체험 기간이 종료되었습니다. 생성 내역은 조회할 수 있습니다.
+            </p>
+          )}
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">이번 달 생성</span>
+            <span className="text-muted-foreground">{usage.usagePeriodLabel}</span>
             <span className="font-medium">
               {usage.used.toLocaleString()} / {usage.limit.toLocaleString()}건
             </span>

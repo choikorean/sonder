@@ -18,10 +18,14 @@ import {
   OPENAI_TEMPERATURE,
 } from "@/lib/openai";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import { getUsageStatus, recordUsage, usageLimitMessage } from "@/lib/usage";
+import { getUsageStatus, recordUsage, formatUsageLimitMessage } from "@/lib/usage";
 import { getSubscriberContext } from "@/lib/subscriber-context";
 import { getPhraseContentsForPrompt } from "@/lib/saved-phrases";
-import { toPlainClientText } from "@/lib/plain-text";
+import {
+  assertReportExplanationSections,
+  combineReportExplanationSections,
+  parseReportExplanationJson,
+} from "@/lib/report-explanation/output";
 
 export async function POST(request: NextRequest) {
   const { supabase, user } = await getAuthContext();
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   const usage = await getUsageStatus(supabase);
   if (!usage.allowed) {
-    return errorResponse(usageLimitMessage(usage.plan), 429);
+    return errorResponse(formatUsageLimitMessage(usage), 429);
   }
 
   const ctx = await getSubscriberContext(supabase);
@@ -80,6 +84,7 @@ export async function POST(request: NextRequest) {
   });
 
   let result: string;
+  let sections;
   let tokensEstimated: number | null = null;
   try {
     const openai = getOpenAIClient();
@@ -99,19 +104,19 @@ export async function POST(request: NextRequest) {
     const completion = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       temperature: OPENAI_TEMPERATURE,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: system },
         { role: "user", content: userPrompt },
       ],
     });
 
-    result = toPlainClientText(
-      completion.choices[0]?.message?.content?.trim() ?? "",
-    );
+    const content = completion.choices[0]?.message?.content?.trim() ?? "{}";
+    const parsedJson = JSON.parse(content) as Record<string, unknown>;
+    sections = parseReportExplanationJson(parsedJson);
+    assertReportExplanationSections(sections);
+    result = combineReportExplanationSections(sections);
     tokensEstimated = completion.usage?.total_tokens ?? null;
-    if (!result) {
-      throw new Error("빈 응답");
-    }
   } catch {
     return errorResponse("AI 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.", 502);
   }
@@ -141,5 +146,6 @@ export async function POST(request: NextRequest) {
   return successResponse({
     id: saved.id,
     result,
+    sections,
   });
 }

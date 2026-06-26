@@ -7,6 +7,7 @@ import {
   type PlanId,
   type BillingCycle,
 } from "@/lib/plans";
+import { isTrialPeriodValid } from "@/lib/trial";
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
 
@@ -14,6 +15,7 @@ type SubscriptionRow = {
   plan: string;
   status: string;
   billing_cycle: string;
+  started_at: string | null;
   current_period_start: string | null;
   current_period_end: string | null;
   trial_ends_at: string | null;
@@ -23,7 +25,7 @@ type SubscriptionRow = {
 };
 
 const SUBSCRIPTION_SELECT =
-  "plan, status, billing_cycle, current_period_start, current_period_end, trial_ends_at, next_billing_at, cancel_at_period_end, canceled_at";
+  "plan, status, billing_cycle, started_at, current_period_start, current_period_end, trial_ends_at, next_billing_at, cancel_at_period_end, canceled_at";
 
 export type CurrentSubscription = {
   /** 실제 구독 레코드의 플랜 (없으면 free) */
@@ -33,6 +35,7 @@ export type CurrentSubscription = {
   plan: Plan;
   status: string;
   billingCycle: BillingCycle;
+  startedAt: string | null;
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
   trialEndsAt: string | null;
@@ -52,6 +55,7 @@ export function mapSubscriptionRow(
   const cycleRaw = data?.billing_cycle ?? "monthly";
   const currentPeriodStart = data?.current_period_start ?? null;
   const currentPeriodEnd = data?.current_period_end ?? null;
+  const startedAt = data?.started_at ?? null;
   const trialEndsAt = data?.trial_ends_at ?? null;
   const nextBillingAt = data?.next_billing_at ?? null;
   const cancelAtPeriodEnd = data?.cancel_at_period_end ?? false;
@@ -59,8 +63,11 @@ export function mapSubscriptionRow(
 
   const periodValid =
     !currentPeriodEnd || new Date(currentPeriodEnd).getTime() > Date.now();
-  const isActive = (status === "active" || status === "trialing") && periodValid;
-  const isTrialing = status === "trialing" && periodValid;
+  const trialValid = isTrialPeriodValid(trialEndsAt);
+  const isActive =
+    (status === "active" && periodValid) ||
+    (status === "trialing" && periodValid && trialValid);
+  const isTrialing = status === "trialing" && periodValid && trialValid;
 
   const planId: PlanId = isPlanId(planRaw) ? planRaw : "free";
   const effectivePlanId: PlanId = isActive ? planId : "free";
@@ -71,6 +78,7 @@ export function mapSubscriptionRow(
     plan: PLANS[effectivePlanId],
     status,
     billingCycle: isBillingCycle(cycleRaw) ? cycleRaw : "monthly",
+    startedAt,
     currentPeriodStart,
     currentPeriodEnd,
     trialEndsAt,

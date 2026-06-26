@@ -71,6 +71,30 @@ export const requestGenerateSchema = z.object({
     .max(1000, "특이사항은 1000자 이내로 입력해 주세요.")
     .nullish(),
   clientId: optionalClientIdSchema,
+  includeDocumentRationale: z.boolean().optional(),
+});
+
+export const documentExplanationSchema = z.object({
+  taxType: z.enum(TAX_TYPES, { error: "세목을 선택해 주세요." }),
+  businessType: z.enum(BUSINESS_TYPES).optional(),
+  documentItems: z.union([
+    z.array(z.string().trim().min(1)).min(1, "자료 항목을 1개 이상 입력해 주세요."),
+    z
+      .string()
+      .trim()
+      .min(1, "자료 항목을 입력해 주세요.")
+      .max(2000, "자료 항목은 2000자 이내로 입력해 주세요."),
+  ]),
+  customerQuestion: z
+    .string()
+    .trim()
+    .max(500, "고객 질문은 500자 이내로 입력해 주세요.")
+    .nullish(),
+  memo: z
+    .string()
+    .max(1000, "특이사항은 1000자 이내로 입력해 주세요.")
+    .nullish(),
+  clientId: optionalClientIdSchema,
 });
 
 export const consultationSummarySchema = z.object({
@@ -84,6 +108,10 @@ export const consultationSummarySchema = z.object({
 
 export const consultationClientIdSchema = z.object({
   clientId: optionalClientIdSchema,
+});
+
+export const dueDateSuggestQuerySchema = z.object({
+  taxType: z.enum(TAX_TYPES, { error: "세목을 선택해 주세요." }),
 });
 
 export const reportExplanationSchema = z.object({
@@ -219,6 +247,116 @@ export const taxScheduleQuerySchema = z.object({
 });
 
 export type TaxScheduleQueryInput = z.infer<typeof taxScheduleQuerySchema>;
+
+const accountEmailSchema = z
+  .string()
+  .trim()
+  .min(1, "이메일을 입력해 주세요.")
+  .email("이메일 형식이 올바르지 않습니다.");
+
+const accountPasswordSchema = z
+  .string()
+  .min(6, "비밀번호는 6자 이상이어야 합니다.");
+
+export const accountWithdrawnStatusSchema = z.object({
+  email: accountEmailSchema,
+});
+
+export const accountReactivateSchema = z.object({
+  email: accountEmailSchema,
+  password: accountPasswordSchema,
+  name: z
+    .string()
+    .trim()
+    .min(1, "이름을 입력해 주세요.")
+    .max(50, "이름은 50자 이내로 입력해 주세요."),
+});
+
+export type AccountWithdrawnStatusInput = z.infer<
+  typeof accountWithdrawnStatusSchema
+>;
+export type AccountReactivateInput = z.infer<typeof accountReactivateSchema>;
+
+const CAMPAIGN_ITEM_STATUSES = [
+  "not_requested",
+  "requested",
+  "partial",
+  "completed",
+  "rerequest_needed",
+] as const;
+
+export const campaignCreateSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .max(200, "제목은 200자 이내로 입력해 주세요.")
+    .optional(),
+  taxType: z.enum(TAX_TYPES).optional(),
+  memo: z
+    .string()
+    .max(1000, "특이사항은 1000자 이내로 입력해 주세요.")
+    .nullish(),
+  seasonPresetId: z.string().trim().max(100).nullish(),
+  submissionDeadlineLabel: z.string().trim().max(100).nullish(),
+  clientIds: z
+    .array(z.string().uuid("고객 정보가 올바르지 않습니다."))
+    .min(1, "캠페인에 포함할 고객을 1명 이상 선택해 주세요."),
+});
+
+export const campaignAddClientsSchema = z.object({
+  clientIds: z
+    .array(z.string().uuid("고객 정보가 올바르지 않습니다."))
+    .min(1, "추가할 고객을 선택해 주세요."),
+});
+
+export const campaignItemUpdateSchema = z.object({
+  status: z.enum(CAMPAIGN_ITEM_STATUSES, {
+    error: "상태 값이 올바르지 않습니다.",
+  }),
+  missingItems: z
+    .string()
+    .max(2000, "미제출 자료는 2000자 이내로 입력해 주세요.")
+    .nullish(),
+});
+
+export const campaignGenerateSchema = z.object({
+  itemIds: z
+    .array(z.string().uuid("캠페인 항목이 올바르지 않습니다."))
+    .optional(),
+  onlyNotRequested: z.boolean().optional(),
+});
+
+export const requestRerequestSchema = z.object({
+  taxType: z.enum(TAX_TYPES, { error: "세목을 선택해 주세요." }),
+  businessType: z.enum(BUSINESS_TYPES).optional(),
+  missingItems: z.union([
+    z.array(z.string().trim().min(1)).min(1),
+    z.string().trim().min(1),
+  ]),
+  memo: z
+    .string()
+    .max(1000, "특이사항은 1000자 이내로 입력해 주세요.")
+    .nullish(),
+  clientId: optionalClientIdSchema,
+  campaignItemId: z.string().uuid().nullish(),
+  submissionDeadlineLabel: z.string().trim().max(100).nullish(),
+});
+
+export type CampaignCreateInput = z.infer<typeof campaignCreateSchema>;
+export type CampaignGenerateInput = z.infer<typeof campaignGenerateSchema>;
+export type RequestRerequestInput = z.infer<typeof requestRerequestSchema>;
+
+export const followUpTaskListQuerySchema = z.object({
+  status: z.enum(["pending", "done", "all"]).default("pending"),
+});
+
+export const followUpTaskUpdateSchema = z.object({
+  status: z.enum(["pending", "done"]).optional(),
+  assignedUserId: z
+    .string()
+    .uuid("담당자 정보가 올바르지 않습니다.")
+    .nullish(),
+});
 
 /** ZodError에서 사용자에게 보여줄 첫 번째 한국어 메시지를 추출합니다. */
 export function firstZodErrorMessage(error: ZodError): string {

@@ -25,6 +25,7 @@ export default async function AppLayout({
       <AppNav
         email={user.email ?? ""}
         canManageBilling={ctx.canManageBilling}
+        canUseClientProfiles={ctx.capabilities.clientProfiles}
       />
       <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
         {children}

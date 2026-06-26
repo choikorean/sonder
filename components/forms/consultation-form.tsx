@@ -20,6 +20,9 @@ import { toPlainClientText } from "@/lib/plain-text";
 import {
   ClientSelect,
 } from "@/components/clients/client-select";
+import { ConsultationFollowUpActions } from "@/components/consultations/consultation-follow-up-actions";
+import { FollowUpTaskList } from "@/components/follow-ups/follow-up-task-list";
+import type { FollowUpTask } from "@/lib/follow-up/types";
 
 type SummaryData = {
   transcript: string | null;
@@ -31,7 +34,13 @@ type SummaryData = {
 };
 
 type ApiResult =
-  | { success: true; data: SummaryData & { id: string } }
+  | {
+      success: true;
+      data: SummaryData & {
+        id: string;
+        followUpTasks?: FollowUpTask[];
+      };
+    }
   | { success: false; error: string };
 
 function OutputSection({
@@ -65,13 +74,60 @@ function OutputSection({
   );
 }
 
+function RequiredDocumentsSection({
+  value,
+  clientId,
+}: {
+  value: string;
+  clientId: string | null;
+}) {
+  const content = toPlainClientText(value.trim());
+  if (!content || content === "해당 없음") {
+    return <OutputSection title="추가로 받아야 할 자료" value={value} />;
+  }
+
+  const explainParams = new URLSearchParams({
+    items: content,
+    question: "홈택스에 다 있는 거 아닌가요?",
+  });
+  if (clientId) {
+    explainParams.set("clientId", clientId);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">추가로 받아야 할 자료</CardTitle>
+        <CardAction>
+          <CopyButton text={content} />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+          {content}
+        </p>
+        <Link
+          href={`/requests/explain?${explainParams.toString()}`}
+          className="inline-flex text-sm font-medium text-foreground underline underline-offset-4"
+        >
+          자료 필요 이유 설명문 생성
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ConsultationForm({
   fullConsultationOutput,
   canSelectClient,
+  canAssignFollowUps,
+  orgMembers = [],
   initialClientId = null,
 }: {
   fullConsultationOutput: boolean;
   canSelectClient: boolean;
+  canAssignFollowUps: boolean;
+  orgMembers?: { userId: string; name: string }[];
   initialClientId?: string | null;
 }) {
   const [text, setText] = useState("");
@@ -79,7 +135,9 @@ export function ConsultationForm({
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<SummaryData | null>(null);
+  const [data, setData] = useState<
+    (SummaryData & { followUpTasks?: FollowUpTask[] }) | null
+  >(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -207,11 +265,24 @@ export function ConsultationForm({
                 title="고객 전달용 정리문"
                 value={data.clientSummary}
               />
-              <OutputSection
-                title="추가로 받아야 할 자료"
+              <RequiredDocumentsSection
                 value={data.requiredDocuments}
+                clientId={clientId}
               />
               <OutputSection title="내부 후속 조치" value={data.nextActions} />
+              {data.followUpTasks && data.followUpTasks.length > 0 && (
+                <FollowUpTaskList
+                  initialTasks={data.followUpTasks}
+                  canAssign={canAssignFollowUps}
+                  orgMembers={orgMembers}
+                  showViewAllLink
+                />
+              )}
+              <ConsultationFollowUpActions
+                clientId={clientId}
+                requiredDocuments={data.requiredDocuments}
+                consultationSummary={data.summary}
+              />
               <OutputSection
                 title="다음 안내 사항"
                 value={data.nextGuidance}
@@ -220,6 +291,19 @@ export function ConsultationForm({
           ) : (
             <>
               <OutputSection title="내부 후속 조치" value={data.nextActions} />
+              {data.followUpTasks && data.followUpTasks.length > 0 && (
+                <FollowUpTaskList
+                  initialTasks={data.followUpTasks}
+                  canAssign={canAssignFollowUps}
+                  orgMembers={orgMembers}
+                  showViewAllLink
+                />
+              )}
+              <ConsultationFollowUpActions
+                clientId={clientId}
+                requiredDocuments={data.requiredDocuments}
+                consultationSummary={data.summary}
+              />
               <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
                 고객 전달용 정리문·추가 자료 목록·다음 안내는{" "}
                 <Link

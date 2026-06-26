@@ -6,7 +6,9 @@ import type { Database } from "@/types/database";
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/requests",
+  "/campaigns",
   "/consultations",
+  "/follow-ups",
   "/reports",
   "/history",
   "/schedule",
@@ -67,12 +69,26 @@ export async function updateSession(request: NextRequest) {
       await supabase.auth.signOut();
       const url = request.nextUrl.clone();
       url.pathname = "/login";
-      url.search = "?withdrawn=1";
+      url.search = "?reactivate=1";
       return NextResponse.redirect(url);
     }
   }
 
   if (user && pathname === "/login") {
+    const { data: loginProfile } = await supabase
+      .from("profiles")
+      .select("withdrawn_at")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (loginProfile?.withdrawn_at) {
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.search = "?reactivate=1";
+      return NextResponse.redirect(url);
+    }
+
     const next = request.nextUrl.searchParams.get("next");
     const url = request.nextUrl.clone();
     url.pathname =

@@ -23,7 +23,7 @@ import {
 } from "@/lib/openai";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { AUDIO_MAX_BYTES, AUDIO_ALLOWED_MIME_TYPES } from "@/lib/constants";
-import { getUsageStatus, recordUsage, usageLimitMessage } from "@/lib/usage";
+import { getUsageStatus, recordUsage, formatUsageLimitMessage } from "@/lib/usage";
 import { getSubscriberContext } from "@/lib/subscriber-context";
 import { getPhraseContentsForPrompt } from "@/lib/saved-phrases";
 import { toPlainClientText } from "@/lib/plain-text";
@@ -32,6 +32,7 @@ import {
   toConsultationDbInsert,
   type ConsultationFields,
 } from "@/lib/consultation-output";
+import { createFollowUpTasksFromConsultation } from "@/lib/follow-up/service";
 
 const AUDIO_BUCKET = "consultation-audio";
 
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
 
   const usage = await getUsageStatus(supabase);
   if (!usage.allowed) {
-    return errorResponse(usageLimitMessage(usage.plan), 429);
+    return errorResponse(formatUsageLimitMessage(usage), 429);
   }
 
   const contentType = request.headers.get("content-type") ?? "";
@@ -295,11 +296,25 @@ export async function POST(request: NextRequest) {
 
   await recordUsage(supabase, user.id, "consultation_summary", tokensEstimated);
 
+  let followUpTasks: Awaited<ReturnType<typeof createFollowUpTasksFromConsultation>> = [];
+  try {
+    followUpTasks = await createFollowUpTasksFromConsultation(supabase, {
+      ctx,
+      userId: user.id,
+      consultationId: saved.id,
+      clientId: resolvedClientId,
+      nextActions: fields.nextActions,
+    });
+  } catch {
+    // 후속 조치 저장 실패는 요약 생성 성공을 막지 않음
+  }
+
   const responseFields = toConsultationApiResponse(fields, fullOutput);
 
   return successResponse({
     id: saved.id,
     transcript,
+    followUpTasks,
     ...responseFields,
   });
 }

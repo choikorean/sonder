@@ -2,6 +2,8 @@ import Link from "next/link";
 import {
   CalendarDays,
   FileText,
+  FolderKanban,
+  ListTodo,
   MessagesSquare,
   Receipt,
   History,
@@ -10,6 +12,8 @@ import {
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { assertCampaignAccess, getCampaignDashboardStats } from "@/lib/document-campaign/service";
+import { getFollowUpDashboardStats } from "@/lib/follow-up/service";
 import { getSubscriberContext } from "@/lib/subscriber-context";
 import {
   Card,
@@ -180,17 +184,52 @@ const FEATURE_ORDER = [
 export default async function DashboardPage() {
   const supabase = await createClient();
   const ctx = await getSubscriberContext(supabase);
-  const [recentItems, usage, byFeature, upcomingSchedule] = await Promise.all([
+  const [recentItems, usage, byFeature, upcomingSchedule, campaignStats, followUpStats] =
+    await Promise.all([
     getRecentItems(),
     getUsageStatus(supabase),
     getMonthlyUsageByFeature(supabase),
     getUpcomingTaxScheduleEvents(supabase, 5),
+    (async () => {
+      if (!ctx.capabilities.clientProfiles) {
+        return null;
+      }
+      try {
+        const scope = assertCampaignAccess(ctx);
+        return getCampaignDashboardStats(supabase, {
+          organizationId: scope.organizationId,
+          userId: (await supabase.auth.getUser()).data.user?.id ?? "",
+        });
+      } catch {
+        return null;
+      }
+    })(),
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return null;
+      try {
+        return getFollowUpDashboardStats(supabase, {
+          ctx,
+          userId: user.id,
+        });
+      } catch {
+        return null;
+      }
+    })(),
   ]);
 
   const featureCards = [
     ...FEATURES,
     ...(ctx.capabilities.clientProfiles
       ? [
+          {
+            href: "/campaigns",
+            title: "자료 요청 캠페인",
+            description: "시즌별 거래처 자료 요청·재요청·제출 상태를 관리합니다.",
+            icon: FolderKanban,
+          },
           {
             href: "/settings/clients",
             title: "고객 관리",
@@ -215,7 +254,7 @@ export default async function DashboardPage() {
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">이번 달 사용량</h2>
+          <h2 className="text-lg font-semibold">{usage.usagePeriodLabel}</h2>
           <Link
             href="/billing"
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
@@ -224,6 +263,12 @@ export default async function DashboardPage() {
           </Link>
         </div>
         <Card className="p-4">
+          {usage.trialExpired && (
+            <p className="mb-4 text-sm text-muted-foreground">
+              무료 체험 기간이 종료되었습니다. 생성 내역은 조회할 수 있으며, 계속
+              이용하려면 요금제를 선택해 주세요.
+            </p>
+          )}
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">전체 생성</span>
             <span>
@@ -260,6 +305,67 @@ export default async function DashboardPage() {
           </div>
         </Card>
       </section>
+
+      {followUpStats && followUpStats.pendingCount > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">상담 후속 조치</h2>
+            <Link
+              href="/follow-ups"
+              className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+            >
+              후속 조치 관리
+            </Link>
+          </div>
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                  <ListTodo className="size-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">미완료 후속</p>
+                  <p className="text-2xl font-bold">
+                    {followUpStats.pendingCount.toLocaleString()}건
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </section>
+      )}
+
+      {campaignStats && campaignStats.activeCampaigns > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">자료 요청 캠페인</h2>
+            <Link
+              href="/campaigns"
+              className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+            >
+              캠페인 관리
+            </Link>
+          </div>
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                  <FolderKanban className="size-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">미제출·후속 필요</p>
+                  <p className="text-2xl font-bold">
+                    {campaignStats.pendingItems.toLocaleString()}건
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                진행 중 캠페인 {campaignStats.activeCampaigns.toLocaleString()}개
+              </p>
+            </div>
+          </Card>
+        </section>
+      )}
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">

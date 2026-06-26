@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "대시보드" },
   { href: "/requests", label: "자료 요청 생성" },
+  { href: "/campaigns", label: "자료 캠페인", requiresClientProfiles: true },
   { href: "/consultations", label: "상담 요약" },
+  { href: "/follow-ups", label: "후속 조치" },
   { href: "/reports", label: "신고 결과 설명문" },
   { href: "/history", label: "생성 내역" },
   { href: "/schedule", label: "세무일정" },
@@ -21,18 +23,26 @@ const NAV_ITEMS = [
   { href: "/settings/billing", label: "결제 및 구독", requiresBillingManager: true },
 ] as const;
 
-function getNavItems(canManageBilling: boolean) {
-  return NAV_ITEMS.filter(
-    (item) => canManageBilling || !("requiresBillingManager" in item && item.requiresBillingManager),
-  );
+function getNavItems(canManageBilling: boolean, canUseClientProfiles: boolean) {
+  return NAV_ITEMS.filter((item) => {
+    if ("requiresBillingManager" in item && item.requiresBillingManager) {
+      return canManageBilling;
+    }
+    if ("requiresClientProfiles" in item && item.requiresClientProfiles) {
+      return canUseClientProfiles;
+    }
+    return true;
+  });
 }
 
 export function AppNav({
   email,
   canManageBilling,
+  canUseClientProfiles,
 }: {
   email: string;
   canManageBilling: boolean;
+  canUseClientProfiles: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -51,7 +61,7 @@ export function AppNav({
     router.refresh();
   }
 
-  const navItems = getNavItems(canManageBilling);
+  const navItems = getNavItems(canManageBilling, canUseClientProfiles);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">

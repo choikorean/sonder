@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { canAccessTeamFeatures } from "@/lib/org";
 import { getSubscriberContext } from "@/lib/subscriber-context";
 import { ConsultationForm } from "@/components/forms/consultation-form";
 
@@ -15,6 +16,18 @@ export default async function ConsultationsPage({
   const supabase = await createClient();
   const ctx = await getSubscriberContext(supabase);
   const fullOutput = ctx.capabilities.fullConsultationOutput;
+  const canAssignFollowUps = canAccessTeamFeatures(
+    ctx.organization,
+    ctx.featurePlanId,
+    ctx.subscription.isActive,
+  );
+  const orgMembers =
+    canAssignFollowUps && ctx.organization
+      ? ctx.organization.members.map((member) => ({
+          userId: member.userId,
+          name: member.name ?? "이름 없음",
+        }))
+      : [];
 
   return (
     <div className="space-y-6">
@@ -29,6 +42,8 @@ export default async function ConsultationsPage({
       <ConsultationForm
         fullConsultationOutput={fullOutput}
         canSelectClient={ctx.capabilities.clientProfiles}
+        canAssignFollowUps={canAssignFollowUps}
+        orgMembers={orgMembers}
         initialClientId={params.clientId ?? null}
       />
     </div>

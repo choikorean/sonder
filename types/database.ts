@@ -136,6 +136,235 @@ export type Database = {
           },
         ]
       }
+      document_campaign_items: {
+        Row: {
+          campaign_id: string
+          client_id: string
+          created_at: string
+          id: string
+          last_request_id: string | null
+          last_rerequest_id: string | null
+          missing_items: string | null
+          requested_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          client_id: string
+          created_at?: string
+          id?: string
+          last_request_id?: string | null
+          last_rerequest_id?: string | null
+          missing_items?: string | null
+          requested_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          last_request_id?: string | null
+          last_rerequest_id?: string | null
+          missing_items?: string | null
+          requested_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_campaign_items_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "document_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_campaign_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_campaign_items_last_request_id_fkey"
+            columns: ["last_request_id"]
+            isOneToOne: false
+            referencedRelation: "request_generations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_campaign_items_last_rerequest_id_fkey"
+            columns: ["last_rerequest_id"]
+            isOneToOne: false
+            referencedRelation: "request_generations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_campaigns: {
+        Row: {
+          created_at: string
+          id: string
+          memo: string | null
+          organization_id: string | null
+          season_preset_id: string | null
+          submission_deadline_label: string | null
+          tax_type: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          memo?: string | null
+          organization_id?: string | null
+          season_preset_id?: string | null
+          submission_deadline_label?: string | null
+          tax_type: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          memo?: string | null
+          organization_id?: string | null
+          season_preset_id?: string | null
+          submission_deadline_label?: string | null
+          tax_type?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_campaigns_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_explanations: {
+        Row: {
+          business_type: string | null
+          client_id: string | null
+          created_at: string
+          customer_question: string | null
+          document_items: string
+          id: string
+          memo: string | null
+          result: string
+          tax_type: string
+          user_id: string
+        }
+        Insert: {
+          business_type?: string | null
+          client_id?: string | null
+          created_at?: string
+          customer_question?: string | null
+          document_items: string
+          id?: string
+          memo?: string | null
+          result: string
+          tax_type: string
+          user_id: string
+        }
+        Update: {
+          business_type?: string | null
+          client_id?: string | null
+          created_at?: string
+          customer_question?: string | null
+          document_items?: string
+          id?: string
+          memo?: string | null
+          result?: string
+          tax_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_explanations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follow_up_tasks: {
+        Row: {
+          assigned_user_id: string | null
+          client_id: string | null
+          completed_at: string | null
+          consultation_id: string | null
+          created_at: string
+          id: string
+          organization_id: string | null
+          sort_order: number
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_user_id?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          consultation_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string | null
+          sort_order?: number
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_user_id?: string | null
+          client_id?: string | null
+          completed_at?: string | null
+          consultation_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string | null
+          sort_order?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follow_up_tasks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_tasks_consultation_id_fkey"
+            columns: ["consultation_id"]
+            isOneToOne: false
+            referencedRelation: "consultation_summaries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_up_tasks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consultation_summaries: {
         Row: {
           audio_url: string | null
@@ -557,6 +786,7 @@ export type Database = {
       request_generations: {
         Row: {
           business_type: string
+          campaign_item_id: string | null
           client_id: string | null
           created_at: string
           id: string
@@ -567,6 +797,7 @@ export type Database = {
         }
         Insert: {
           business_type: string
+          campaign_item_id?: string | null
           client_id?: string | null
           created_at?: string
           id?: string
@@ -577,6 +808,7 @@ export type Database = {
         }
         Update: {
           business_type?: string
+          campaign_item_id?: string | null
           client_id?: string | null
           created_at?: string
           id?: string
@@ -586,6 +818,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "request_generations_campaign_item_id_fkey"
+            columns: ["campaign_item_id"]
+            isOneToOne: false
+            referencedRelation: "document_campaign_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "request_generations_client_id_fkey"
             columns: ["client_id"]

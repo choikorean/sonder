@@ -21,6 +21,11 @@ import {
   filterTaxScheduleEventsForPrompt,
   formatTaxSchedulePromptBlock,
 } from "@/lib/tax-schedule/prompt-context";
+import {
+  formatKoreanDateLabel,
+  isPaymentDueEvent,
+  suggestPaymentDueDate,
+} from "@/lib/tax-schedule/due-date-suggest";
 import type { TaxScheduleEvent } from "@/lib/tax-schedule/types";
 import { addKstDays, getKstIsoDate } from "@/lib/tax-schedule/window";
 
@@ -166,5 +171,73 @@ describe("tax schedule prompt context", () => {
     const now = new Date("2026-06-15T00:00:00+09:00");
     expect(getKstIsoDate(now)).toBe("2026-06-15");
     expect(addKstDays(10, now)).toBe("2026-06-25");
+  });
+});
+
+describe("suggestPaymentDueDate", () => {
+  const sampleEvents: TaxScheduleEvent[] = [
+    {
+      id: "1",
+      eventDate: "2026-06-10",
+      title: "부가가치세 확정신고 납부",
+      note: "1기 확정",
+      taxCategories: ["VAT"],
+    },
+    {
+      id: "2",
+      eventDate: "2026-06-10",
+      title: "원천세 신고 납부기한",
+      note: null,
+      taxCategories: ["WITHHOLDING_TAX"],
+    },
+    {
+      id: "3",
+      eventDate: "2026-06-25",
+      title: "법인세 중간예납",
+      note: null,
+      taxCategories: ["CORPORATE_TAX"],
+    },
+    {
+      id: "4",
+      eventDate: "2026-06-01",
+      title: "2025귀속 종합소득세 확정신고 납부",
+      note: null,
+      taxCategories: ["INCOME_TAX"],
+    },
+  ];
+
+  it("납부 관련 일정 중 가장 가까운 날짜를 제안한다", () => {
+    const suggestion = suggestPaymentDueDate(sampleEvents, "VAT", "2026-06-01");
+    expect(suggestion).toEqual({
+      dueDate: "2026-06-10",
+      dueDateLabel: "2026년 6월 10일",
+      eventTitle: "부가가치세 확정신고 납부",
+      eventNote: "1기 확정",
+    });
+  });
+
+  it("납부 키워드가 없는 일정은 제외한다", () => {
+    expect(
+      isPaymentDueEvent("세무서 방문 안내"),
+    ).toBe(false);
+    expect(
+      suggestPaymentDueDate(
+        [
+          {
+            id: "x",
+            eventDate: "2026-06-20",
+            title: "세무서 방문 안내",
+            note: null,
+            taxCategories: ["VAT"],
+          },
+        ],
+        "VAT",
+        "2026-06-01",
+      ),
+    ).toBeNull();
+  });
+
+  it("한국어 날짜 라벨을 포맷한다", () => {
+    expect(formatKoreanDateLabel("2026-06-10")).toBe("2026년 6월 10일");
   });
 });

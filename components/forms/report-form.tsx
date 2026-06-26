@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { LoadingButton } from "@/components/loading-button";
 import { Label } from "@/components/ui/label";
@@ -12,10 +12,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { GeneratedOutput } from "@/components/generated-output";
+import { ReportExplanationOutput } from "@/components/forms/report-explanation-output";
 import {
   ClientSelect,
 } from "@/components/clients/client-select";
+import {
+  TAX_CHANGE_REASON_CHIPS,
+  combineChangeReasons,
+} from "@/lib/report-explanation/change-reasons";
+import type { ReportExplanationSections } from "@/lib/report-explanation/output";
 import { TAX_TYPE_LABELS, type TaxType } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -25,11 +30,26 @@ const selectClassName = cn(
   "disabled:cursor-not-allowed disabled:opacity-50",
 );
 
+type DueDateSuggestion = {
+  dueDate: string;
+  dueDateLabel: string;
+  eventTitle: string;
+  eventNote: string | null;
+};
+
 type ApiResult =
   | {
       success: true;
-      data: { id: string; result: string };
+      data: {
+        id: string;
+        result: string;
+        sections: ReportExplanationSections;
+      };
     }
+  | { success: false; error: string };
+
+type DueDateSuggestResult =
+  | { success: true; data: { suggestion: DueDateSuggestion | null } }
   | { success: false; error: string };
 
 export function ReportForm({
@@ -43,12 +63,80 @@ export function ReportForm({
   const [clientId, setClientId] = useState<string | null>(initialClientId);
   const [currentTax, setCurrentTax] = useState("");
   const [previousTax, setPreviousTax] = useState("");
+  const [selectedReasonChips, setSelectedReasonChips] = useState<string[]>([]);
   const [changeReason, setChangeReason] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [dueDateSuggestion, setDueDateSuggestion] =
+    useState<DueDateSuggestion | null>(null);
+  const [dueDateLoading, setDueDateLoading] = useState(false);
+  const dueDateManuallyEdited = useRef(false);
   const [memo, setMemo] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [sections, setSections] = useState<ReportExplanationSections | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!taxType) {
+      setDueDateSuggestion(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadDueDateSuggestion() {
+      setDueDateLoading(true);
+      try {
+        const res = await fetch(
+          `/api/tax-schedule/due-date-suggest?taxType=${taxType}`,
+        );
+        const json: DueDateSuggestResult = await res.json();
+        if (cancelled) return;
+
+        if (json.success && json.data.suggestion) {
+          setDueDateSuggestion(json.data.suggestion);
+          if (!dueDateManuallyEdited.current) {
+            setDueDate(json.data.suggestion.dueDateLabel);
+          }
+        } else {
+          setDueDateSuggestion(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setDueDateSuggestion(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setDueDateLoading(false);
+        }
+      }
+    }
+
+    void loadDueDateSuggestion();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [taxType]);
+
+  function handleTaxTypeChange(nextTaxType: TaxType | "") {
+    setTaxType(nextTaxType);
+    dueDateManuallyEdited.current = false;
+    if (!nextTaxType) {
+      setDueDate("");
+      setDueDateSuggestion(null);
+    }
+  }
+
+  function toggleReasonChip(chip: string) {
+    setSelectedReasonChips((current) =>
+      current.includes(chip)
+        ? current.filter((item) => item !== chip)
+        : [...current, chip],
+    );
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,8 +151,14 @@ export function ReportForm({
       return;
     }
 
+    const effectiveChangeReason = combineChangeReasons(
+      selectedReasonChips,
+      changeReason,
+    );
+
     setLoading(true);
     setResult(null);
+    setSections(null);
 
     try {
       const res = await fetch("/api/report-explanation", {
@@ -74,7 +168,7 @@ export function ReportForm({
           taxType,
           currentTax: Number(currentTax),
           previousTax: previousTax.trim() ? Number(previousTax) : undefined,
-          changeReason: changeReason.trim() || undefined,
+          changeReason: effectiveChangeReason,
           dueDate: dueDate.trim() || undefined,
           memo: memo.trim() || undefined,
           clientId: clientId ?? undefined,
@@ -86,6 +180,7 @@ export function ReportForm({
         setError(json.error);
       } else {
         setResult(json.data.result);
+        setSections(json.data.sections);
       }
     } catch {
       setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
@@ -116,7 +211,9 @@ export function ReportForm({
                   id="taxType"
                   className={selectClassName}
                   value={taxType}
-                  onChange={(e) => setTaxType(e.target.value as TaxType)}
+                  onChange={(e) =>
+                    handleTaxTypeChange(e.target.value as TaxType | "")
+                  }
                   disabled={loading}
                 >
                   <option value="" disabled>
@@ -158,14 +255,36 @@ export function ReportForm({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="changeReason">변동 사유 (선택)</Label>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>변동 사유 (선택)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {TAX_CHANGE_REASON_CHIPS.map((chip) => {
+                    const selected = selectedReasonChips.includes(chip);
+                    return (
+                      <button
+                        key={chip}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => toggleReasonChip(chip)}
+                        className={cn(
+                          "rounded-full border px-3 py-1 text-sm transition-colors",
+                          selected
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-input bg-transparent text-foreground hover:bg-muted/60",
+                          loading && "cursor-not-allowed opacity-50",
+                        )}
+                      >
+                        {chip}
+                      </button>
+                    );
+                  })}
+                </div>
                 <Input
                   id="changeReason"
                   type="text"
                   value={changeReason}
                   onChange={(e) => setChangeReason(e.target.value)}
-                  placeholder="예) 매출 증가"
+                  placeholder="추가 사유가 있으면 입력하세요"
                   disabled={loading}
                 />
               </div>
@@ -176,10 +295,27 @@ export function ReportForm({
                   id="dueDate"
                   type="text"
                   value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  placeholder="예) 2026-07-25"
+                  onChange={(e) => {
+                    dueDateManuallyEdited.current = true;
+                    setDueDate(e.target.value);
+                  }}
+                  placeholder="예) 2026년 7월 25일"
                   disabled={loading}
                 />
+                {dueDateLoading && taxType && (
+                  <p className="text-xs text-muted-foreground">
+                    국세청 일정에서 납부기한을 찾는 중...
+                  </p>
+                )}
+                {!dueDateLoading && dueDateSuggestion && (
+                  <p className="text-xs text-muted-foreground">
+                    국세청 일정 제안: {dueDateSuggestion.dueDateLabel} ·{" "}
+                    {dueDateSuggestion.eventTitle}
+                    {dueDateSuggestion.eventNote
+                      ? ` (${dueDateSuggestion.eventNote})`
+                      : ""}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -208,8 +344,8 @@ export function ReportForm({
         </CardContent>
       </Card>
 
-      {result && (
-        <GeneratedOutput title="신고 결과 설명문" content={result} />
+      {result && sections && (
+        <ReportExplanationOutput result={result} sections={sections} />
       )}
     </div>
   );

@@ -35,6 +35,7 @@ export function buildSubscriberSnapshot(row: SubscriptionRowInput) {
     plan: row.plan,
     status: row.status,
     billing_cycle: "monthly",
+    started_at: null,
     current_period_start: null,
     current_period_end: row.current_period_end ?? futureIso(),
     trial_ends_at: row.status === "trialing" ? row.current_period_end ?? futureIso() : null,

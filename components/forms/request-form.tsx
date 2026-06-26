@@ -37,14 +37,17 @@ type ApiResult =
 export function RequestForm({
   canSelectClient,
   initialClientId = null,
+  initialMemo = "",
 }: {
   canSelectClient: boolean;
   initialClientId?: string | null;
+  initialMemo?: string;
 }) {
   const [taxType, setTaxType] = useState<TaxType | "">("");
   const [businessType, setBusinessType] = useState<BusinessType | "">("");
   const [clientId, setClientId] = useState<string | null>(initialClientId);
-  const [memo, setMemo] = useState("");
+  const [memo, setMemo] = useState(initialMemo);
+  const [includeDocumentRationale, setIncludeDocumentRationale] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
@@ -74,6 +77,7 @@ export function RequestForm({
           businessType,
           memo: memo.trim() || undefined,
           clientId: clientId ?? undefined,
+          includeDocumentRationale,
         }),
       });
       const json: ApiResult = await res.json();
@@ -172,6 +176,20 @@ export function RequestForm({
                 disabled={loading}
               />
             </div>
+
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={includeDocumentRationale}
+                onChange={(e) => setIncludeDocumentRationale(e.target.checked)}
+                disabled={loading}
+              />
+              <span>
+                각 자료가 왜 필요한지, 홈택스만으로 부족할 수 있는 이유를 함께
+                안내합니다.
+              </span>
+            </label>
 
             {error && (
               <p className="text-sm text-destructive" role="alert">

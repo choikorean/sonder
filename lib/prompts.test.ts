@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildConsultationSummaryPrompt,
+  buildDocumentExplanationPrompt,
   buildDocumentRequestPrompt,
   buildTaxExplanationPrompt,
 } from "@/lib/prompts";
@@ -31,6 +32,40 @@ describe("buildDocumentRequestPrompt", () => {
 
     expect(system).not.toContain("부가가치세 확정신고 납부");
   });
+
+  it("자료 필요 이유 안내 지침을 기본 포함한다", () => {
+    const { system } = buildDocumentRequestPrompt({
+      taxType: "VAT",
+      businessType: "ECOMMERCE",
+    });
+
+    expect(system).toContain("홈택스에 다 있는 거 아닌가요");
+    expect(system).toContain("각 항목마다 왜 필요한지");
+  });
+
+  it("자료 필요 이유 안내를 끌 수 있다", () => {
+    const { system } = buildDocumentRequestPrompt({
+      taxType: "VAT",
+      businessType: "ECOMMERCE",
+      includeDocumentRationale: false,
+    });
+
+    expect(system).not.toContain("홈택스에 다 있는 거 아닌가요");
+  });
+});
+
+describe("buildDocumentExplanationPrompt", () => {
+  it("고객 질문과 자료 항목을 user 프롬프트에 포함한다", () => {
+    const { system, user } = buildDocumentExplanationPrompt({
+      taxType: "VAT",
+      documentItems: ["통장 내역", "카드 매출"],
+      customerQuestion: "홈택스에 다 있는 거 아닌가요?",
+    });
+
+    expect(system).toContain("자료 필요 이유 설명문");
+    expect(user).toContain("통장 내역");
+    expect(user).toContain("홈택스에 다 있는 거 아닌가요?");
+  });
 });
 
 describe("buildConsultationSummaryPrompt", () => {
@@ -55,5 +90,17 @@ describe("buildTaxExplanationPrompt", () => {
 
     expect(system).toContain("부가가치세 확정신고 납부");
     expect(system).toContain("납부기한 미제공 시 임의로 기한을 적지 마세요");
+  });
+
+  it("구조화 JSON 출력 지침을 포함한다", () => {
+    const { system } = buildTaxExplanationPrompt({
+      taxType: "VAT",
+      currentTax: 1_000_000,
+    });
+
+    expect(system).toContain("amountSummary");
+    expect(system).toContain("changeExplanation");
+    expect(system).toContain("paymentGuidance");
+    expect(system).toContain("JSON 객체로만 응답");
   });
 });
